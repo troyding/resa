@@ -1,5 +1,5 @@
 #storm
-* [strom home](http://storm.incubator.apache.org)
+* [storm home](http://storm.incubator.apache.org)
 * [storm on github](https://github.com/apache/incubator-storm)
 
 #storm on yarn
