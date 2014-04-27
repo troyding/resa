@@ -1,18 +1,15 @@
 #storm
-* [strom home](http://storm.incubator.apache.org)
+* [storm home](http://storm.incubator.apache.org)
 * [storm on github](https://github.com/apache/incubator-storm)
----
 
 #storm on yarn
 * [project home](https://github.com/yahoo/storm-yarn)
 * [simple tutorial](http://dongxicheng.org/mapreduce-nextgen/storm-on-yarn)
----
 
 #markdown
 * [wikipedia](http://zh.wikipedia.org/wiki/Markdown)
 * [chinese version tutorial](http://wowubuntu.com/markdown)
 * [online editor](https://www.zybuluo.com/mdeditor)
----
 
 #reading material
 ##first week: conception
