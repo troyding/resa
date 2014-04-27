@@ -1,6 +1,8 @@
 package resa.metrics;
 
 import backtype.storm.metric.api.IMetricsConsumer;
+import backtype.storm.task.IErrorReporter;
+import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.Utils;
 
 import java.util.Collection;
@@ -14,6 +16,11 @@ import java.util.stream.Collectors;
  * @author Troy Ding
  */
 public abstract class FilteredMetricsCollector implements IMetricsConsumer {
+
+    @Override
+    public void prepare(Map stormConf, Object arg, TopologyContext context, IErrorReporter errorReporter) {
+
+    }
 
     @Override
     public void handleDataPoints(TaskInfo taskInfo, Collection<DataPoint> dataPoints) {
