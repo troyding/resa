@@ -93,6 +93,11 @@ public class TopologyHelper {
         return new TopologyDetails(topologyInfo.get_id(), topologyConf, topology, numWorkers, exe2Components);
     }
 
+    public static Map<String, Integer> getComponentExecutorCount(TopologyDetails topoDetails) {
+        return topoDetails.getExecutorToComponent().entrySet().stream()
+                .collect(Collectors.groupingBy(Map.Entry::getValue, Collectors.reducing(0, e -> 1, (i, j) -> i + j)));
+    }
+
 
     /**
      * Get a running topology's details.

@@ -98,6 +98,12 @@ public class TopologyListener {
         }
     }
 
+    /**
+     * Synchronize the watching topologies with alive topologies in the cluster. Dead topology will
+     * be removed from the watching list.
+     *
+     * @param topologies alive topologies
+     */
     public void synTopologies(Topologies topologies) {
         Set<String> aliveTopoIds = topologies.getTopologies().stream().map(TopologyDetails::getId)
                 .collect(Collectors.toSet());
@@ -107,7 +113,7 @@ public class TopologyListener {
     }
 
     /**
-     * Add a topology to watching list or update corresponding TopologyDetails object
+     * Add a topology to the watching list or update corresponding TopologyDetails object
      * if this topology is under watching.
      *
      * @param topoDetails
@@ -189,7 +195,10 @@ public class TopologyListener {
      * check whether a rebalance operation on the specified context is permitted
      */
     protected boolean needRebalance(AllocationContext context) {
-        return true;
+        if (context.compExecutors.isEmpty()) {
+            return false;
+        }
+        return !context.compExecutors.equals(TopologyHelper.getComponentExecutorCount(context.topologyDetails));
     }
 
     /* Send rebalance request to nimbus */
