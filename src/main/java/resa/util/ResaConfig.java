@@ -21,6 +21,10 @@ public class ResaConfig extends Config {
 
     public static final String ZK_ROOT_PATH = "resa.scheduler.zk.root";
 
+    public static final String REBALANCE_WAITING_SECS = "resa.scheduler.rebalance.waiting.secs";
+
+    public static final String OPTIMIZE_INTERVAL = "resa.optimize.interval.secs";
+
     private ResaConfig(boolean loadDefault) {
         if (loadDefault) {
             //read default.yaml & storm.yaml
@@ -41,7 +45,7 @@ public class ResaConfig extends Config {
      * @return
      */
     public static ResaConfig create() {
-        return create(true);
+        return create(false);
     }
 
     /**

@@ -1,7 +1,9 @@
 package resa.scheduler;
 
 import backtype.storm.Config;
+import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.generated.Nimbus;
+import backtype.storm.generated.NotAliveException;
 import backtype.storm.generated.RebalanceOptions;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
@@ -9,6 +11,7 @@ import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import com.netflix.curator.framework.CuratorFramework;
 import org.apache.log4j.Logger;
+import org.apache.thrift7.TException;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -25,46 +28,55 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
- * Created by ding on 14-4-26.
+ * Class responsible for watch topology's allocation, and make a decision whether change of allocation
+ * should be take effect.
+ *
+ * @author Troy Ding
  */
 public class TopologyListener {
 
     private static final Logger LOG = Logger.getLogger(TopologyListener.class);
 
-    public static class AssignmentContext {
+    public static class AllocationContext {
         private long lastRequest;
         private long lastRebalance;
         private Map<String, Integer> compExecutors;
         private TopologyDetails topologyDetails;
 
-        public AssignmentContext setCompExecutors(Map<String, Integer> compExecutors) {
+        public AllocationContext setCompExecutors(Map<String, Integer> compExecutors) {
             this.compExecutors = compExecutors;
             return this;
         }
 
-        public AssignmentContext setTopologyDetails(TopologyDetails topologyDetails) {
+        public AllocationContext setTopologyDetails(TopologyDetails topologyDetails) {
             this.topologyDetails = topologyDetails;
             return this;
         }
 
-        public AssignmentContext(TopologyDetails topologyDetails, Map<String, Integer> compExecutors) {
+        public AllocationContext(TopologyDetails topologyDetails, Map<String, Integer> compExecutors) {
             this.lastRequest = System.currentTimeMillis();
             this.compExecutors = compExecutors;
             this.topologyDetails = topologyDetails;
         }
 
-        public AssignmentContext updateLastRebalance() {
-            lastRebalance = System.currentTimeMillis();
+        public AllocationContext updateLastRebalance() {
+            lastRequest = (lastRebalance = System.currentTimeMillis());
+            return this;
+        }
+
+        public AllocationContext updateLastRequest() {
+            lastRequest = System.currentTimeMillis();
             return this;
         }
     }
 
     private CuratorFramework zk;
     private String rootPath;
-    private Map<String, AssignmentContext> watchingTopologies = new ConcurrentHashMap<>();
+    private Map<String, AllocationContext> watchingTopologies = new ConcurrentHashMap<>();
     private Nimbus.Client nimbus;
     private final int maxExecutorsPerWorker;
-    private ExecutorService threadPool = Executors.newCachedThreadPool();
+    private final ExecutorService threadPool = Executors.newCachedThreadPool();
+    private final int rebalanceWaitingSecs;
 
     public TopologyListener(Map<String, Object> conf) {
         zk = Utils.newCuratorStarted(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS),
@@ -73,6 +85,7 @@ public class TopologyListener {
         checkZKNode();
         nimbus = NimbusClient.getConfiguredClient(conf).getClient();
         maxExecutorsPerWorker = ConfigUtil.getInt(conf, ResaConfig.MAX_EXECUTORS_PER_WORKER, 10);
+        rebalanceWaitingSecs = ConfigUtil.getInt(conf, ResaConfig.REBALANCE_WAITING_SECS, -1);
     }
 
     private void checkZKNode() {
@@ -90,24 +103,32 @@ public class TopologyListener {
                 .collect(Collectors.toSet());
         // remove topologies that dead
         watchingTopologies.keySet().retainAll(aliveTopoIds);
-        aliveTopoIds.stream().map(topologies::getById).forEach(topoDetails -> {
-            String topoId = topoDetails.getId();
-            // For a new joined topology, set a new watcher on it and add it to watching list
-            // For a watching topology, update its running detail
-            watchingTopologies.compute(topoId, (topologyId, context) ->
-                    (context == null ? watchTopology(topoDetails) : context.setTopologyDetails(topoDetails)));
-        });
+        topologies.getTopologies().stream().forEach(this::addOrUpdateTopology);
+    }
+
+    /**
+     * Add a topology to watching list or update corresponding TopologyDetails object
+     * if this topology is under watching.
+     *
+     * @param topoDetails
+     */
+    public void addOrUpdateTopology(TopologyDetails topoDetails) {
+        String topoId = topoDetails.getId();
+        // For a new joined topology, set a new watcher on it and add it to watching list
+        // For a watching topology, update its running detail
+        watchingTopologies.compute(topoId, (topologyId, context) ->
+                (context == null ? watchTopology(topoDetails) : context.setTopologyDetails(topoDetails)));
     }
 
     /* add a watcher on zk to get a notification when a new assignment is set */
-    private AssignmentContext watchTopology(TopologyDetails topoDetails) {
+    private AllocationContext watchTopology(TopologyDetails topoDetails) {
         // get current assignment and set a watcher on the zk node
         Map<String, Integer> compExecutors = getCompExecutorsAndWatch(topoDetails.getId());
         if (compExecutors == null) {
             return null;
         }
         LOG.info("Begin to watching topology " + topoDetails.getId());
-        return new AssignmentContext(topoDetails, compExecutors);
+        return new AllocationContext(topoDetails, compExecutors);
     }
 
     private Map<String, Integer> getCompExecutorsAndWatch(String topoId) {
@@ -154,39 +175,47 @@ public class TopologyListener {
 
     }
 
-    private void tryRebalance(String topoId, AssignmentContext context) {
+    private void tryRebalance(String topoId, AllocationContext context) {
         if (needRebalance(context)) {
             LOG.info("Trying rebalance for topology " + topoId);
             requestRebalance(topoId, context);
         } else {
             LOG.info("Request rebalance denied for topology " + topoId);
+            context.updateLastRequest();
         }
     }
 
     /**
      * check whether a rebalance operation on the specified context is permitted
      */
-    protected boolean needRebalance(AssignmentContext context) {
+    protected boolean needRebalance(AllocationContext context) {
         return true;
     }
 
-    private void requestRebalance(String topoId, AssignmentContext context) {
+    /* Send rebalance request to nimbus */
+    private void requestRebalance(String topoId, AllocationContext context) {
         int totolNumExecutors = context.compExecutors.values().stream().mapToInt(i -> i).sum();
         int numWorkers = totolNumExecutors / maxExecutorsPerWorker;
-        if (totolNumExecutors % maxExecutorsPerWorker != 0) {
+        if (totolNumExecutors % maxExecutorsPerWorker > (int) (maxExecutorsPerWorker / 2)) {
             numWorkers++;
         }
         RebalanceOptions options = new RebalanceOptions();
         //set rebalance options
         options.set_num_workers(numWorkers);
         options.set_num_executors(context.compExecutors);
+        if (rebalanceWaitingSecs >= 0) {
+            options.set_wait_secs(rebalanceWaitingSecs);
+        }
         try {
             nimbus.rebalance(TopologyHelper.topologyId2Name(topoId), options);
             LOG.info("do rebalance successfully for topology " + topoId);
-        } catch (Exception e) {
+            context.updateLastRebalance();
+        } catch (TException e) {
             LOG.warn("do rebalance failed for topology " + topoId, e);
+        } catch (NotAliveException | InvalidTopologyException e) {
+            watchingTopologies.remove(topoId);
+            LOG.warn("topology is not exist, maybe killed, remove from waiting list: " + topoId);
         }
-        context.updateLastRebalance();
     }
 
 }

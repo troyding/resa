@@ -16,7 +16,7 @@ import java.util.Map;
 public class TopologyListenerTest extends TestCase {
 
     private TopologyListener topologyListener;
-    private Map<String, Object> conf = ResaConfig.create();
+    private Map<String, Object> conf = ResaConfig.create(true);
     private CuratorFramework zk;
 
     @Override
