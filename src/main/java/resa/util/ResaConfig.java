@@ -17,13 +17,15 @@ public class ResaConfig extends Config {
 
     public static final String COMP_SAMPLE_RATE = "resa.comp.sample.rate";
 
-    public static final String MAX_EXECUTORS_PER_WORKER = "resa.scheduler.max.executor.per.worker";
+    public static final String MAX_EXECUTORS_PER_WORKER = "resa.topology.max.executor.per.worker";
 
     public static final String ZK_ROOT_PATH = "resa.scheduler.zk.root";
 
-    public static final String REBALANCE_WAITING_SECS = "resa.scheduler.rebalance.waiting.secs";
+    public static final String REBALANCE_WAITING_SECS = "resa.topology.rebalance.waiting.secs";
 
     public static final String OPTIMIZE_INTERVAL = "resa.optimize.interval.secs";
+
+    public static final String MIN_REBALANCE_INTERVAL = "resa.topology.rebalance.min.interval.secs";
 
     private ResaConfig(boolean loadDefault) {
         if (loadDefault) {

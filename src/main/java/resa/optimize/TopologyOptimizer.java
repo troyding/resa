@@ -1,15 +1,19 @@
 package resa.optimize;
 
 import backtype.storm.Config;
+import backtype.storm.generated.Nimbus;
+import backtype.storm.generated.RebalanceOptions;
+import backtype.storm.generated.TopologyInfo;
 import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
-import backtype.storm.utils.Utils;
-import com.netflix.curator.framework.CuratorFramework;
+import backtype.storm.utils.NimbusClient;
 import org.apache.log4j.Logger;
 import resa.metrics.FilteredMetricsCollector;
 import resa.metrics.MetricNames;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
+import resa.util.TopologyHelper;
+import resa.optimize.MeasuredData.ComponentType;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,32 +35,34 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
 
     private static final Logger LOG = Logger.getLogger(TopologyOptimizer.class);
 
-    private CuratorFramework zk;
     private volatile List<MeasuredData> metricsPool = new ArrayList<>(100);
-    private String zkNode;
     private final Timer timer = new Timer(true);
-    private Map<String, Integer> lastAllocation = new HashMap<>();
+    private Map<String, Integer> lastAllocation;
+    private int maxExecutorsPerWorker;
+    private int rebalanceWaitingSecs;
+    private long minRebalanceInterval;
+    private long lastRalance;
+    private Nimbus.Client nimbus;
+    private String topologyName;
+    private TopologyContext topologyContext;
 
     @Override
     public void prepare(Map conf, Object arg, TopologyContext context, IErrorReporter errorReporter) {
         super.prepare(conf, arg, context, errorReporter);
-        zk = Utils.newCuratorStarted(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS),
-                conf.get(Config.STORM_ZOOKEEPER_PORT));
-        zkNode = conf.getOrDefault(ResaConfig.ZK_ROOT_PATH, "/resa") + "/" + context.getStormId();
-        try {
-            if (zk.checkExists().forPath(zkNode) == null) {
-                zk.create().creatingParentsIfNeeded().forPath(zkNode, Utils.serialize(lastAllocation));
-            } else {
-                zk.setData().forPath(zkNode, Utils.serialize(lastAllocation));
-            }
-        } catch (Exception e) {
-            LOG.warn("check znode for topology failed: " + context.getStormId(), e);
-            errorReporter.reportError(e);
-        }
+        this.topologyContext = context;
+        this.topologyName = (String) conf.get(Config.TOPOLOGY_NAME);
+        maxExecutorsPerWorker = ConfigUtil.getInt(conf, ResaConfig.MAX_EXECUTORS_PER_WORKER, 10);
+        rebalanceWaitingSecs = ConfigUtil.getInt(conf, ResaConfig.REBALANCE_WAITING_SECS, -1);
+        minRebalanceInterval = ConfigUtil.getInt(conf, ResaConfig.MIN_REBALANCE_INTERVAL, 120);
+        // connected to nimbus
+        nimbus = NimbusClient.getConfiguredClient(conf).getClient();
+        // current allocation should be retrieved from nimbus
+        lastAllocation = getTopologyCurrAllocation();
         long calcInterval = ConfigUtil.getInt(conf, ResaConfig.OPTIMIZE_INTERVAL, 30) * 1000;
-        timer.schedule(new AllocationCalc(), calcInterval, calcInterval);
+        timer.schedule(new AllocationCalc(), calcInterval * 2, calcInterval);
         LOG.info(String.format("Init Topology Optimizer successfully for %s:%d, calc interval is %dms",
                 context.getThisComponentId(), context.getThisTaskId(), calcInterval));
+        lastRalance = currentTimeSecs();
     }
 
     private class AllocationCalc extends TimerTask {
@@ -65,16 +71,18 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         public void run() {
             List<MeasuredData> data = getCachedDataAndClearBuffer();
             Map<String, Integer> newAllocation = calcNewAllocation(data);
-            if (newAllocation != null && !newAllocation.equals(lastAllocation)) {
-                try {
-                    zk.setData().forPath(zkNode, Utils.serialize(newAllocation));
-                    lastAllocation = newAllocation;
-                } catch (Exception e) {
-                    LOG.warn("set new allocation on znode '" + zkNode + "' fail", e);
+            if (newAllocation != null && !newAllocation.equals(lastAllocation)
+                    && currentTimeSecs() - lastRalance > minRebalanceInterval) {
+                LOG.info("Detected topology allocation changed, request rebalance....");
+                if (requestRebalance(topologyName, newAllocation)) {
+                    lastRalance = currentTimeSecs();
                 }
             }
         }
+    }
 
+    private static long currentTimeSecs() {
+        return System.currentTimeMillis() / 1000;
     }
 
     private Map<String, Integer> calcNewAllocation(List<MeasuredData> data) {
@@ -96,8 +104,45 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     protected void handleSelectedDataPoints(TaskInfo taskInfo, Collection<DataPoint> dataPoints) {
         Map<String, Object> ret = dataPoints.stream().collect(
                 Collectors.toMap(p -> METRICS_NAME_MAPPING.get(p.name), p -> p.value));
+        ComponentType t = topologyContext.getRawTopology().get_spouts().containsKey(taskInfo.srcComponentId)
+                ? ComponentType.SPOUT : ComponentType.BOLT;
         //add to cache
-        metricsPool.add(new MeasuredData(taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
+        metricsPool.add(new MeasuredData(t, taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
+    }
+
+    /* call nimbus to get current topology allocation */
+    private Map<String, Integer> getTopologyCurrAllocation() {
+        try {
+            TopologyInfo topoInfo = nimbus.getTopologyInfo(topologyContext.getStormId());
+            return topoInfo.get_executors().stream().collect(Collectors.groupingBy(e -> e.get_component_id(),
+                    Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+        } catch (Exception e) {
+        }
+        return Collections.emptyMap();
+    }
+
+    /* Send rebalance request to nimbus */
+    private boolean requestRebalance(String topoName, Map<String, Integer> allocation) {
+        int totolNumExecutors = allocation.values().stream().mapToInt(i -> i).sum();
+        int numWorkers = totolNumExecutors / maxExecutorsPerWorker;
+        if (totolNumExecutors % maxExecutorsPerWorker > (int) (maxExecutorsPerWorker / 2)) {
+            numWorkers++;
+        }
+        RebalanceOptions options = new RebalanceOptions();
+        //set rebalance options
+        options.set_num_workers(numWorkers);
+        options.set_num_executors(allocation);
+        if (rebalanceWaitingSecs >= 0) {
+            options.set_wait_secs(rebalanceWaitingSecs);
+        }
+        try {
+            nimbus.rebalance(TopologyHelper.topologyId2Name(topoName), options);
+            LOG.info("do rebalance successfully for topology " + topoName);
+            return true;
+        } catch (Exception e) {
+            LOG.warn("do rebalance failed for topology " + topoName, e);
+        }
+        return false;
     }
 
 }
