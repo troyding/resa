@@ -1,5 +1,6 @@
 package resa.optimize;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -11,14 +12,18 @@ public class OptimizeDecision {
         INFEASIBLE, FEASIBALE
     }
 
-    public Status status;
-    public Map<String, Integer> minReqOptAllocation;
-    public Map<String, Integer> currOptAllocation;
+    public final Status status;
+    public final Map<String, Integer> minReqOptAllocation;
+    public final Map<String, Integer> currOptAllocation;
 
     public OptimizeDecision(Status status, Map<String, Integer> minReqOptAllocation,
                             Map<String, Integer> currOptAllocation) {
         this.status = status;
         this.minReqOptAllocation = minReqOptAllocation;
         this.currOptAllocation = currOptAllocation;
+    }
+
+    public OptimizeDecision(Status status, Map<String, Integer> currOptAllocation) {
+        this(status, Collections.EMPTY_MAP, currOptAllocation);
     }
 }

@@ -35,13 +35,11 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
 
     private static final Logger LOG = Logger.getLogger(TopologyOptimizer.class);
 
-    private volatile List<MeasuredData> metricsPool = new ArrayList<>(100);
+    private volatile List<MeasuredData> measureBuffer = new ArrayList<>(100);
     private final Timer timer = new Timer(true);
-    private Map<String, Integer> lastAllocation;
+    private Map<String, Integer> currAllocation;
     private int maxExecutorsPerWorker;
     private int rebalanceWaitingSecs;
-    private long minRebalanceInterval;
-    private long lastRalance;
     private Nimbus.Client nimbus;
     private String topologyName;
     private TopologyContext topologyContext;
@@ -53,16 +51,14 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         this.topologyName = (String) conf.get(Config.TOPOLOGY_NAME);
         maxExecutorsPerWorker = ConfigUtil.getInt(conf, ResaConfig.MAX_EXECUTORS_PER_WORKER, 10);
         rebalanceWaitingSecs = ConfigUtil.getInt(conf, ResaConfig.REBALANCE_WAITING_SECS, -1);
-        minRebalanceInterval = ConfigUtil.getInt(conf, ResaConfig.MIN_REBALANCE_INTERVAL, 120);
         // connected to nimbus
         nimbus = NimbusClient.getConfiguredClient(conf).getClient();
         // current allocation should be retrieved from nimbus
-        lastAllocation = getTopologyCurrAllocation();
+        currAllocation = getTopologyCurrAllocation();
         long calcInterval = ConfigUtil.getInt(conf, ResaConfig.OPTIMIZE_INTERVAL, 30) * 1000;
         timer.schedule(new AllocationCalc(), calcInterval * 2, calcInterval);
         LOG.info(String.format("Init Topology Optimizer successfully for %s:%d, calc interval is %dms",
                 context.getThisComponentId(), context.getThisTaskId(), calcInterval));
-        lastRalance = currentTimeSecs();
     }
 
     private class AllocationCalc extends TimerTask {
@@ -71,18 +67,13 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         public void run() {
             List<MeasuredData> data = getCachedDataAndClearBuffer();
             Map<String, Integer> newAllocation = calcNewAllocation(data);
-            if (newAllocation != null && !newAllocation.equals(lastAllocation)
-                    && currentTimeSecs() - lastRalance > minRebalanceInterval) {
+            if (newAllocation != null && !newAllocation.equals(currAllocation)) {
                 LOG.info("Detected topology allocation changed, request rebalance....");
                 if (requestRebalance(topologyName, newAllocation)) {
-                    lastRalance = currentTimeSecs();
+                    currAllocation = newAllocation;
                 }
             }
         }
-    }
-
-    private static long currentTimeSecs() {
-        return System.currentTimeMillis() / 1000;
     }
 
     private Map<String, Integer> calcNewAllocation(List<MeasuredData> data) {
@@ -90,8 +81,8 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     }
 
     private List<MeasuredData> getCachedDataAndClearBuffer() {
-        List<MeasuredData> ret = metricsPool;
-        metricsPool = new ArrayList<>(100);
+        List<MeasuredData> ret = measureBuffer;
+        measureBuffer = new ArrayList<>(100);
         return ret;
     }
 
@@ -107,7 +98,7 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         ComponentType t = topologyContext.getRawTopology().get_spouts().containsKey(taskInfo.srcComponentId)
                 ? ComponentType.SPOUT : ComponentType.BOLT;
         //add to cache
-        metricsPool.add(new MeasuredData(t, taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
+        measureBuffer.add(new MeasuredData(t, taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
     }
 
     /* call nimbus to get current topology allocation */

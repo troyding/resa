@@ -1,9 +1,6 @@
 package resa.optimize;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Queue;
+import java.util.*;
 
 /**
  * Created by Tom.fu on 16/4/2014.
@@ -44,11 +41,9 @@ public class ComponentAggResult {
         to.addCAR(from);
     }
 
-    static ComponentAggResult getSimpleCombinedHistory(Queue<ComponentAggResult> his, MeasuredData.ComponentType t) {
+    static ComponentAggResult getSimpleCombinedHistory(Iterable<ComponentAggResult> his, MeasuredData.ComponentType t) {
         ComponentAggResult ret = new ComponentAggResult(t);
-        for (ComponentAggResult hisCar : his) {
-            ret.addCAR(hisCar);
-        }
+        his.forEach(ret::addCAR);
         return ret;
     }
 

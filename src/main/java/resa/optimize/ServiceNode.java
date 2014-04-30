@@ -12,15 +12,11 @@ public class ServiceNode {
     private ServiceType type = ServiceType.OTHER;
     private double o2iRatio;
 
-    public ServiceNode() {
-        lambda = 0.0;
-        mu = 0.0;
-        type = ServiceType.OTHER;
-        o2iRatio = 0.0;
-    }
-
     public ServiceNode(double l, double m, ServiceType t, double r) {
         lambda = l;
+        if (Double.compare(m, 0.0) == 0) {
+            throw new IllegalArgumentException("mu cannot be 0");
+        }
         mu = m;
         type = t;
         o2iRatio = r;
@@ -81,7 +77,8 @@ public class ServiceNode {
 
     public String serviceNodeKeyStats(int serverCount, boolean showMinRequirement) {
         if (showMinRequirement) {
-            return String.format("lambda: %.3f, mu: %.3f, rho: %.3f, k: %d, MinRequire: %d", lambda, mu, getRho(serverCount), serverCount, getMinReqServerCount());
+            return String.format("lambda: %.3f, mu: %.3f, rho: %.3f, k: %d, MinRequire: %d", lambda, mu,
+                    getRho(serverCount), serverCount, getMinReqServerCount());
         } else {
             return String.format("lambda: %.3f, mu: %.3f, rho: %.3f, k: %d", lambda, mu, getRho(serverCount), serverCount);
         }
@@ -121,11 +118,7 @@ public class ServiceNode {
     }
 
     public static int getMinReqServerCount(double lambda, double mu) {
-        if (mu == 0.0) {
-            return Integer.MAX_VALUE;
-        } else {
-            return (int) (lambda / mu) + 1;
-        }
+        return (int) (lambda / mu) + 1;
     }
 
 

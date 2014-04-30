@@ -11,16 +11,16 @@ import java.util.Map;
  * Recv-Queue arrival count includes ack for each message
  * When calculate sum and average, need to adjust (sum - #message, average - 1) for accurate value.
  */
-public class AggMetricAnalyzer {
+public class AggResultCalculator {
 
-    public AggMetricAnalyzer(Iterable<MeasuredData> dataStream) {
+    public AggResultCalculator(Iterable<MeasuredData> dataStream) {
         this.dataStream = dataStream;
     }
 
     protected Iterable<MeasuredData> dataStream;
 
-    private Map<String, ComponentAggResult> spoutResult = new HashMap<String, ComponentAggResult>();
-    private Map<String, ComponentAggResult> boltResult = new HashMap<String, ComponentAggResult>();
+    private Map<Integer, ComponentAggResult> spoutResult = new HashMap<>();
+    private Map<Integer, ComponentAggResult> boltResult = new HashMap<>();
 
     public void calCMVStat() {
 
@@ -33,14 +33,12 @@ public class AggMetricAnalyzer {
             Map<String, Object> componentData = measuredData.data;
 
             String componentName = measuredData.component;
-            String taskID = measuredData.task + "";
-            //String[] cid = new String[]{componentName, taskID};
-            String cid = componentName + ":" + taskID;
+            int taskId = measuredData.task;
             ComponentAggResult car;
             if (measuredData.componentType.equals(MeasuredData.ComponentType.SPOUT)) {
-                car = spoutResult.computeIfAbsent(cid, (k) -> new ComponentAggResult(MeasuredData.ComponentType.SPOUT));
+                car = spoutResult.computeIfAbsent(taskId, (k) -> new ComponentAggResult(MeasuredData.ComponentType.SPOUT));
             } else {
-                car = boltResult.computeIfAbsent(cid, (k) -> new ComponentAggResult(MeasuredData.ComponentType.BOLT));
+                car = boltResult.computeIfAbsent(taskId, (k) -> new ComponentAggResult(MeasuredData.ComponentType.BOLT));
             }
 
             for (Map.Entry<String, Object> e : componentData.entrySet()) {
@@ -98,11 +96,11 @@ public class AggMetricAnalyzer {
         }
     }
 
-    public Map<String, ComponentAggResult> getSpoutResult() {
+    public Map<Integer, ComponentAggResult> getSpoutResult() {
         return spoutResult;
     }
 
-    public Map<String, ComponentAggResult> getBoltResult() {
+    public Map<Integer, ComponentAggResult> getBoltResult() {
         return boltResult;
     }
 
