@@ -35,8 +35,8 @@ class AggregatedData {
                         Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
         //calc each component's aggregate result and add it to history list
         groupedResult.forEach((comp, results) -> {
-            MeasuredData.ComponentType t = topologyContext.getRawTopology().get_spouts().containsKey(comp) ?
-                    MeasuredData.ComponentType.SPOUT : MeasuredData.ComponentType.BOLT;
+            ComponentAggResult.ComponentType t = topologyContext.getRawTopology().get_spouts().containsKey(comp) ?
+                    ComponentAggResult.ComponentType.SPOUT : ComponentAggResult.ComponentType.BOLT;
             compHistoryResults.computeIfAbsent(comp, (k) -> new FixedSizeQueue(historySize))
                     .add(ComponentAggResult.getCombinedResult(results, t));
         });

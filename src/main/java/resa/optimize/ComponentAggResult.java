@@ -7,6 +7,8 @@ import java.util.*;
  */
 public class ComponentAggResult {
 
+    public static enum ComponentType {BOLT, SPOUT}
+
     CntMeanVar recvArrivalCnt = new CntMeanVar();
     CntMeanVar recvQueueLen = new CntMeanVar();
     CntMeanVar recvQueueSampleCnt = new CntMeanVar();
@@ -17,9 +19,9 @@ public class ComponentAggResult {
 
     Map<String, CntMeanVar> tupleProcess = new HashMap<>();
 
-    MeasuredData.ComponentType type;
+    ComponentType type;
 
-    ComponentAggResult(MeasuredData.ComponentType t) {
+    ComponentAggResult(ComponentType t) {
         this.type = t;
     }
 
@@ -28,7 +30,7 @@ public class ComponentAggResult {
     }
 
     String getProcessString() {
-        return type == MeasuredData.ComponentType.BOLT ? "exec-delay" : "complete-latency";
+        return type == ComponentType.BOLT ? "exec-delay" : "complete-latency";
     }
 
     CntMeanVar getSimpleCombinedProcessedTuple() {
@@ -41,7 +43,7 @@ public class ComponentAggResult {
         to.addCAR(from);
     }
 
-    static ComponentAggResult getCombinedResult(Iterable<ComponentAggResult> his, MeasuredData.ComponentType t) {
+    static ComponentAggResult getCombinedResult(Iterable<ComponentAggResult> his, ComponentType t) {
         ComponentAggResult ret = new ComponentAggResult(t);
         his.forEach(ret::addCAR);
         return ret;

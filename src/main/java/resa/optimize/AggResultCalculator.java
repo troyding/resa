@@ -1,5 +1,6 @@
 package resa.optimize;
 
+import backtype.storm.task.GeneralTopologyContext;
 import resa.metrics.MetricNames;
 
 import java.util.HashMap;
@@ -13,11 +14,13 @@ import java.util.Map;
  */
 public class AggResultCalculator {
 
-    public AggResultCalculator(Iterable<MeasuredData> dataStream) {
+    public AggResultCalculator(Iterable<MeasuredData> dataStream, GeneralTopologyContext context) {
         this.dataStream = dataStream;
+        this.topologyContext = context;
     }
 
     protected Iterable<MeasuredData> dataStream;
+    private GeneralTopologyContext topologyContext;
 
     private Map<Integer, ComponentAggResult> spoutResult = new HashMap<>();
     private Map<Integer, ComponentAggResult> boltResult = new HashMap<>();
@@ -35,10 +38,12 @@ public class AggResultCalculator {
             String componentName = measuredData.component;
             int taskId = measuredData.task;
             ComponentAggResult car;
-            if (measuredData.componentType.equals(MeasuredData.ComponentType.SPOUT)) {
-                car = spoutResult.computeIfAbsent(taskId, (k) -> new ComponentAggResult(MeasuredData.ComponentType.SPOUT));
+            if (topologyContext.getRawTopology().get_spouts().containsKey(measuredData.component)) {
+                car = spoutResult.computeIfAbsent(taskId,
+                        (k) -> new ComponentAggResult(ComponentAggResult.ComponentType.SPOUT));
             } else {
-                car = boltResult.computeIfAbsent(taskId, (k) -> new ComponentAggResult(MeasuredData.ComponentType.BOLT));
+                car = boltResult.computeIfAbsent(taskId,
+                        (k) -> new ComponentAggResult(ComponentAggResult.ComponentType.BOLT));
             }
 
             for (Map.Entry<String, Object> e : componentData.entrySet()) {

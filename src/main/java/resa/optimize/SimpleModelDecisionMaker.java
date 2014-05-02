@@ -1,6 +1,7 @@
 package resa.optimize;
 
 import backtype.storm.Config;
+import backtype.storm.task.GeneralTopologyContext;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
@@ -15,11 +16,18 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
 
+    @Override
+    public void init(Map<String, Object> conf, GeneralTopologyContext context) {
+        super.init(conf, context);
+        int historySize = ConfigUtil.getInt(conf, "", 1);
+        spoutAregatedData = new AggregatedData(context, historySize);
+        boltAregatedData = new AggregatedData(context, historySize);
+    }
 
     @Override
     public Map<String, Integer> make(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
                                      Map<String, Integer> currAllocation) {
-        AggResultCalculator aggResultCalculator = new AggResultCalculator(dataStream);
+        AggResultCalculator aggResultCalculator = new AggResultCalculator(dataStream, topologyContext);
         aggResultCalculator.calCMVStat();
 
         aggResultCalculator.getSpoutResult().forEach(spoutAregatedData::putResult);
@@ -45,7 +53,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         double avgCompleteHis = spoutAregatedData.compHistoryResults.entrySet().stream().mapToDouble(e -> {
             Iterable<ComponentAggResult> results = e.getValue();
             ComponentAggResult hisCar = ComponentAggResult.getCombinedResult(results,
-                    MeasuredData.ComponentType.SPOUT);
+                    ComponentAggResult.ComponentType.SPOUT);
             CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
             return hisCarCombined.getAvg();
         }).average().getAsDouble();
@@ -54,7 +62,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> {
                     Iterable<ComponentAggResult> results = e.getValue();
                     ComponentAggResult hisCar = ComponentAggResult.getCombinedResult(results,
-                            MeasuredData.ComponentType.BOLT);
+                            ComponentAggResult.ComponentType.BOLT);
                     CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
 
                     double avgSendQLenHis = hisCar.sendQueueLen.getAvg();

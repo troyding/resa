@@ -12,7 +12,6 @@ import backtype.storm.utils.Utils;
 import org.apache.log4j.Logger;
 import resa.metrics.FilteredMetricsCollector;
 import resa.metrics.MetricNames;
-import resa.optimize.MeasuredData.ComponentType;
 import resa.util.ConfigUtil;
 
 import java.util.*;
@@ -117,10 +116,8 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     protected void handleSelectedDataPoints(TaskInfo taskInfo, Collection<DataPoint> dataPoints) {
         Map<String, Object> ret = dataPoints.stream().collect(
                 Collectors.toMap(p -> METRICS_NAME_MAPPING.get(p.name), p -> p.value));
-        ComponentType t = topologyContext.getRawTopology().get_spouts().containsKey(taskInfo.srcComponentId)
-                ? ComponentType.SPOUT : ComponentType.BOLT;
         //add to cache
-        measureBuffer.add(new MeasuredData(t, taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
+        measureBuffer.add(new MeasuredData(taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
     }
 
     /* call nimbus to get current topology allocation */
