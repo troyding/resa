@@ -1,7 +1,7 @@
 package resa.optimize;
 
 import backtype.storm.Config;
-import backtype.storm.task.TopologyContext;
+import backtype.storm.task.GeneralTopologyContext;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
@@ -17,7 +17,7 @@ public class SimpleModelOptimizeAnalyzer extends OptimizeAnalyzer {
     private AggregatedData boltAregatedData;
 
     @Override
-    public void init(Map<String, Object> conf, TopologyContext context) {
+    public void init(Map<String, Object> conf, GeneralTopologyContext context) {
         super.init(conf, context);
         int historySize = ConfigUtil.getInt(conf, "", 1);
         spoutAregatedData = new AggregatedData(context, historySize);

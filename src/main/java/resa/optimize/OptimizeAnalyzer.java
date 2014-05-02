@@ -1,5 +1,6 @@
 package resa.optimize;
 
+import backtype.storm.task.GeneralTopologyContext;
 import backtype.storm.task.TopologyContext;
 
 import java.util.Map;
@@ -12,7 +13,7 @@ public abstract class OptimizeAnalyzer {
     protected TopologyContext topologyContext;
     protected Map<String, Object> conf;
 
-    public void init(Map<String, Object> conf, TopologyContext context) {
+    public void init(Map<String, Object> conf, GeneralTopologyContext context) {
         this.conf = conf;
         this.topologyContext = context;
     }

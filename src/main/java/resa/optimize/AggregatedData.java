@@ -1,9 +1,12 @@
 package resa.optimize;
 
-import backtype.storm.task.TopologyContext;
+import backtype.storm.task.GeneralTopologyContext;
 import resa.util.FixedSizeQueue;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.stream.Collectors;
 
 /**
@@ -11,12 +14,12 @@ import java.util.stream.Collectors;
  */
 class AggregatedData {
 
-    public AggregatedData(TopologyContext topologyContext, int historySize) {
+    public AggregatedData(GeneralTopologyContext topologyContext, int historySize) {
         this.topologyContext = topologyContext;
         this.historySize = historySize;
     }
 
-    private TopologyContext topologyContext;
+    private GeneralTopologyContext topologyContext;
     private int historySize;
     public final Map<Integer, ComponentAggResult> taskResult = new HashMap<>();
     public final Map<String, Queue<ComponentAggResult>> compHistoryResults = new HashMap<>();

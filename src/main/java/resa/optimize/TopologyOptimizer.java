@@ -4,6 +4,7 @@ import backtype.storm.Config;
 import backtype.storm.generated.Nimbus;
 import backtype.storm.generated.RebalanceOptions;
 import backtype.storm.generated.TopologyInfo;
+import backtype.storm.task.GeneralTopologyContext;
 import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.NimbusClient;
@@ -43,7 +44,7 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     private int rebalanceWaitingSecs;
     private Nimbus.Client nimbus;
     private String topologyName;
-    private TopologyContext topologyContext;
+    private GeneralTopologyContext topologyContext;
     private Map<String, Object> conf;
 
     @Override
