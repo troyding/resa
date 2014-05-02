@@ -9,7 +9,10 @@ public class Sampler {
     private long counter = 0;
 
     public Sampler(double rate) {
-        sampleValue = (int) (Math.random() / rate);
+        if (Double.compare(0, rate) >= 0 || Double.compare(rate, 1) > 0) {
+            throw new IllegalArgumentException("Bad sample rate: " + rate);
+        }
+        sampleValue = (int) (Math.random() / rate) + 1;
     }
 
     public boolean shoudSample() {

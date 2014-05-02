@@ -8,12 +8,12 @@ import backtype.storm.task.GeneralTopologyContext;
 import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.NimbusClient;
+import backtype.storm.utils.Utils;
 import org.apache.log4j.Logger;
 import resa.metrics.FilteredMetricsCollector;
 import resa.metrics.MetricNames;
 import resa.optimize.MeasuredData.ComponentType;
 import resa.util.ConfigUtil;
-import resa.util.TopologyHelper;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -60,7 +60,7 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         // current allocation should be retrieved from nimbus
         currAllocation = getTopologyCurrAllocation();
         long calcInterval = ConfigUtil.getInt(conf, OPTIMIZE_INTERVAL, 30) * 1000;
-        timer.schedule(new OptimizeTask(), calcInterval * 2, calcInterval);
+        timer.scheduleAtFixedRate(new OptimizeTask(), calcInterval * 2, calcInterval);
         LOG.info(String.format("Init Topology Optimizer successfully for %s:%d, calc interval is %dms",
                 context.getThisComponentId(), context.getThisTaskId(), calcInterval));
     }
@@ -86,7 +86,7 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
             Map<String, Integer> newAllocation = calcNewAllocation(data);
             if (newAllocation != null && !newAllocation.equals(currAllocation)) {
                 LOG.info("Detected topology allocation changed, request rebalance....");
-                if (requestRebalance(topologyName, newAllocation)) {
+                if (requestRebalance(newAllocation)) {
                     currAllocation = newAllocation;
                 }
             }
@@ -133,9 +133,11 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     private Map<String, Integer> getTopologyCurrAllocation() {
         try {
             TopologyInfo topoInfo = nimbus.getTopologyInfo(topologyContext.getStormId());
-            return topoInfo.get_executors().stream().collect(Collectors.groupingBy(e -> e.get_component_id(),
-                    Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+            return topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+                    .collect(Collectors.groupingBy(e -> e.get_component_id(),
+                            Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
         } catch (Exception e) {
+            LOG.warn("Get topology curr allocation from nimbus failed", e);
         }
         return Collections.emptyMap();
     }
@@ -150,7 +152,7 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     }
 
     /* Send rebalance request to nimbus */
-    private boolean requestRebalance(String topoName, Map<String, Integer> allocation) {
+    private boolean requestRebalance(Map<String, Integer> allocation) {
         int numWorkers = getNumWorkers(allocation);
         RebalanceOptions options = new RebalanceOptions();
         //set rebalance options
@@ -160,11 +162,11 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
             options.set_wait_secs(rebalanceWaitingSecs);
         }
         try {
-            nimbus.rebalance(TopologyHelper.topologyId2Name(topoName), options);
-            LOG.info("do rebalance successfully for topology " + topoName);
+            nimbus.rebalance(topologyName, options);
+            LOG.info("do rebalance successfully for topology " + topologyName);
             return true;
         } catch (Exception e) {
-            LOG.warn("do rebalance failed for topology " + topoName, e);
+            LOG.warn("do rebalance failed for topology " + topologyName, e);
         }
         return false;
     }

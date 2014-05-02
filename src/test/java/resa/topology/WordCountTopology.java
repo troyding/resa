@@ -96,14 +96,14 @@ public class WordCountTopology {
         resaConfig.putAll(conf);
 
         TopologyBuilder builder = new ResaTopologyBuilder();
-        builder.setSpout("say", new RandomSentenceSpout(), ConfigUtil.getInt(conf, "spout.parallelism", 1));
+        builder.setSpout("say", new RandomSentenceSpout(), 2);
 
-        builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "split.parallelism", 1))
-                .shuffleGrouping("say");
-        builder.setBolt("counter", new WordCount(), ConfigUtil.getInt(conf, "counter.parallelism", 1))
-                .fieldsGrouping("split", new Fields("word"));
+        builder.setBolt("split", new SplitSentence(), 4).shuffleGrouping("say").setNumTasks(8);
+        builder.setBolt("counter", new WordCount(), 3).fieldsGrouping("split", new Fields("word")).setNumTasks(6);
 
         resaConfig.addOptimizeSupport();
+        resaConfig.put(ResaConfig.ANALYZER_CLASS, FakeOptimizeAnalyzer.class.getName());
+        resaConfig.put(ResaConfig.REBALANCE_WAITING_SECS, 0);
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 }
