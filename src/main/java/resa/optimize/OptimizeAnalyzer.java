@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * Created by ding on 14-4-30.
  */
-public abstract class Analyzer {
+public abstract class OptimizeAnalyzer {
 
     protected TopologyContext topologyContext;
     protected Map<String, Object> conf;

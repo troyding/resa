@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 /**
  * Created by ding on 14-4-30.
  */
-public class SimpleModelAnalyzer extends Analyzer {
+public class SimpleModelOptimizeAnalyzer extends OptimizeAnalyzer {
 
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;

@@ -4,7 +4,7 @@ import org.junit.Test;
 
 public class ComponentAggResultTest {
 
-    private ComponentAggResult componentAggResult = new ComponentAggResult(ComponentAggResult.ComponentType.bolt);
+    private ComponentAggResult componentAggResult = new ComponentAggResult(MeasuredData.ComponentType.BOLT);
 
     @Test
     public void testGetSimpleCombinedProcessedTuple() throws Exception {

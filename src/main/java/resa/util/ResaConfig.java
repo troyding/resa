@@ -25,7 +25,7 @@ public class ResaConfig extends Config {
 
     public static final String OPTIMIZE_INTERVAL = "resa.optimize.interval.secs";
 
-    public static final String MIN_REBALANCE_INTERVAL = "resa.topology.rebalance.min.interval.secs";
+    public static final String ANALYZER_CLASS = "resa.optimize.analyzer.class";
 
     private ResaConfig(boolean loadDefault) {
         if (loadDefault) {
@@ -60,7 +60,7 @@ public class ResaConfig extends Config {
         return new ResaConfig(loadDefault);
     }
 
-    public void addOptimizerSupport() {
+    public void addOptimizeSupport() {
         registerMetricsConsumer(TopologyOptimizer.class, 1);
     }
 }

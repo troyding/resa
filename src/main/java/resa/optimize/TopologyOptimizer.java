@@ -10,13 +10,14 @@ import backtype.storm.utils.NimbusClient;
 import org.apache.log4j.Logger;
 import resa.metrics.FilteredMetricsCollector;
 import resa.metrics.MetricNames;
-import resa.util.ConfigUtil;
-import resa.util.ResaConfig;
-import resa.util.TopologyHelper;
 import resa.optimize.MeasuredData.ComponentType;
+import resa.util.ConfigUtil;
+import resa.util.TopologyHelper;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static resa.util.ResaConfig.*;
 
 /**
  * Created by ding on 14-4-26.
@@ -43,25 +44,40 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
     private Nimbus.Client nimbus;
     private String topologyName;
     private TopologyContext topologyContext;
+    private Map<String, Object> conf;
 
     @Override
     public void prepare(Map conf, Object arg, TopologyContext context, IErrorReporter errorReporter) {
         super.prepare(conf, arg, context, errorReporter);
+        this.conf = conf;
         this.topologyContext = context;
         this.topologyName = (String) conf.get(Config.TOPOLOGY_NAME);
-        maxExecutorsPerWorker = ConfigUtil.getInt(conf, ResaConfig.MAX_EXECUTORS_PER_WORKER, 10);
-        rebalanceWaitingSecs = ConfigUtil.getInt(conf, ResaConfig.REBALANCE_WAITING_SECS, -1);
+        maxExecutorsPerWorker = ConfigUtil.getInt(conf, MAX_EXECUTORS_PER_WORKER, 10);
+        rebalanceWaitingSecs = ConfigUtil.getInt(conf, REBALANCE_WAITING_SECS, -1);
         // connected to nimbus
         nimbus = NimbusClient.getConfiguredClient(conf).getClient();
         // current allocation should be retrieved from nimbus
         currAllocation = getTopologyCurrAllocation();
-        long calcInterval = ConfigUtil.getInt(conf, ResaConfig.OPTIMIZE_INTERVAL, 30) * 1000;
-        timer.schedule(new AllocationCalc(), calcInterval * 2, calcInterval);
+        long calcInterval = ConfigUtil.getInt(conf, OPTIMIZE_INTERVAL, 30) * 1000;
+        timer.schedule(new OptimizeTask(), calcInterval * 2, calcInterval);
         LOG.info(String.format("Init Topology Optimizer successfully for %s:%d, calc interval is %dms",
                 context.getThisComponentId(), context.getThisTaskId(), calcInterval));
     }
 
-    private class AllocationCalc extends TimerTask {
+    private class OptimizeTask extends TimerTask {
+
+        private OptimizeAnalyzer optAnalyzer;
+
+        OptimizeTask() {
+            try {
+                String defaultAanlyzer = SimpleModelOptimizeAnalyzer.class.getName();
+                optAnalyzer = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAanlyzer))
+                        .asSubclass(OptimizeAnalyzer.class).newInstance();
+            } catch (Exception e) {
+                throw new RuntimeException("Create Analyzer failed", e);
+            }
+            optAnalyzer.init(conf, topologyContext);
+        }
 
         @Override
         public void run() {
@@ -74,11 +90,22 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
                 }
             }
         }
+
+        private Map<String, Integer> calcNewAllocation(List<MeasuredData> data) {
+            OptimizeDecision decision = optAnalyzer.analyze(data,
+                    Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 0),
+                            getNumWorkers(currAllocation)), currAllocation
+            );
+            if (decision == null) {
+                return null;
+            } else if (decision.status == OptimizeDecision.Status.INFEASIBLE) {
+                return decision.currOptAllocation;
+            } else {
+                return decision.minReqOptAllocation;
+            }
+        }
     }
 
-    private Map<String, Integer> calcNewAllocation(List<MeasuredData> data) {
-        return null;
-    }
 
     private List<MeasuredData> getCachedDataAndClearBuffer() {
         List<MeasuredData> ret = measureBuffer;
@@ -112,13 +139,18 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         return Collections.emptyMap();
     }
 
-    /* Send rebalance request to nimbus */
-    private boolean requestRebalance(String topoName, Map<String, Integer> allocation) {
-        int totolNumExecutors = allocation.values().stream().mapToInt(i -> i).sum();
+    private int getNumWorkers(Map<String, Integer> allocation) {
+        int totolNumExecutors = allocation.values().stream().mapToInt(Integer::intValue).sum();
         int numWorkers = totolNumExecutors / maxExecutorsPerWorker;
         if (totolNumExecutors % maxExecutorsPerWorker > (int) (maxExecutorsPerWorker / 2)) {
             numWorkers++;
         }
+        return numWorkers;
+    }
+
+    /* Send rebalance request to nimbus */
+    private boolean requestRebalance(String topoName, Map<String, Integer> allocation) {
+        int numWorkers = getNumWorkers(allocation);
         RebalanceOptions options = new RebalanceOptions();
         //set rebalance options
         options.set_num_workers(numWorkers);
