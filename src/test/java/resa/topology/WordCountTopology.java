@@ -102,7 +102,7 @@ public class WordCountTopology {
         builder.setBolt("counter", new WordCount(), 3).fieldsGrouping("split", new Fields("word")).setNumTasks(6);
 
         resaConfig.addOptimizeSupport();
-        resaConfig.put(ResaConfig.ANALYZER_CLASS, FakeOptimizeAnalyzer.class.getName());
+        resaConfig.put(ResaConfig.ANALYZER_CLASS, FakeDecisionMaker.class.getName());
         resaConfig.put(ResaConfig.REBALANCE_WAITING_SECS, 0);
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }

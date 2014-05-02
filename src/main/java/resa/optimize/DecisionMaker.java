@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * Created by ding on 14-4-30.
  */
-public abstract class OptimizeAnalyzer {
+public abstract class DecisionMaker {
 
     protected GeneralTopologyContext topologyContext;
     protected Map<String, Object> conf;
@@ -17,7 +17,7 @@ public abstract class OptimizeAnalyzer {
         this.topologyContext = context;
     }
 
-    public abstract OptimizeDecision analyze(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
-                                             Map<String, Integer> currAllocation);
+    public abstract Map<String, Integer> make(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
+                                              Map<String, Integer> currAllocation);
 
 }

@@ -38,7 +38,7 @@ class AggregatedData {
             MeasuredData.ComponentType t = topologyContext.getRawTopology().get_spouts().containsKey(comp) ?
                     MeasuredData.ComponentType.SPOUT : MeasuredData.ComponentType.BOLT;
             compHistoryResults.computeIfAbsent(comp, (k) -> new FixedSizeQueue(historySize))
-                    .add(ComponentAggResult.getSimpleCombinedHistory(results, t));
+                    .add(ComponentAggResult.getCombinedResult(results, t));
         });
     }
 

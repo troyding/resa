@@ -67,17 +67,17 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
 
     private class OptimizeTask extends TimerTask {
 
-        private OptimizeAnalyzer optAnalyzer;
+        private DecisionMaker decisionMaker;
 
         OptimizeTask() {
             try {
-                String defaultAanlyzer = SimpleModelOptimizeAnalyzer.class.getName();
-                optAnalyzer = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAanlyzer))
-                        .asSubclass(OptimizeAnalyzer.class).newInstance();
+                String defaultAanlyzer = SimpleModelDecisionMaker.class.getName();
+                decisionMaker = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAanlyzer))
+                        .asSubclass(DecisionMaker.class).newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("Create Analyzer failed", e);
             }
-            optAnalyzer.init(conf, topologyContext);
+            decisionMaker.init(conf, topologyContext);
         }
 
         @Override
@@ -93,17 +93,11 @@ public class TopologyOptimizer extends FilteredMetricsCollector {
         }
 
         private Map<String, Integer> calcNewAllocation(List<MeasuredData> data) {
-            OptimizeDecision decision = optAnalyzer.analyze(data,
+            Map<String, Integer> decision = decisionMaker.make(data,
                     Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 0),
                             getNumWorkers(currAllocation)), currAllocation
             );
-            if (decision == null) {
-                return null;
-            } else if (decision.status == OptimizeDecision.Status.INFEASIBLE) {
-                return decision.currOptAllocation;
-            } else {
-                return decision.minReqOptAllocation;
-            }
+            return decision;
         }
     }
 

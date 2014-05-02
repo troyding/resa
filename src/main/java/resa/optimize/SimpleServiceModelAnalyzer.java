@@ -198,21 +198,21 @@ public class SimpleServiceModelAnalyzer {
      * Like module B in our discussion
      *
      * @param components
-     * @param para
+     * @param conf
      */
-    public static void checkOptimized(Map<String, ServiceNode> components, Map<String, Object> para) {
+    public static void checkOptimized(Map<String, ServiceNode> components, Map<String, Object> conf) {
 
-        Map<String, Integer> curr = getAllocation(components, para);
+        Map<String, Integer> curr = getAllocation(components, conf);
 
         ///Caution about the time unit!, second is used in all the functions of calculation
         /// millisecond is used in the output display!
         double estimatedLatencyMilliSec = getErlangChainTopCompleteTimeMilliSec(components, curr);
-        double realLatencyMilliSec = ConfigUtil.getDouble(para, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);
+        double realLatencyMilliSec = ConfigUtil.getDouble(conf, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);
 
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
 
-        double targetQoSMilliSec = ConfigUtil.getDouble(para, "QoS", 5000.0);
+        double targetQoSMilliSec = ConfigUtil.getDouble(conf, "QoS", 5000.0);
         boolean targetQoSSatisfied = estimatedLatencyMilliSec < targetQoSMilliSec;
         int currAllocationCount = totalServerCountInvolved(curr);
 

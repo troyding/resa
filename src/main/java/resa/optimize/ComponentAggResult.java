@@ -41,7 +41,7 @@ public class ComponentAggResult {
         to.addCAR(from);
     }
 
-    static ComponentAggResult getSimpleCombinedHistory(Iterable<ComponentAggResult> his, MeasuredData.ComponentType t) {
+    static ComponentAggResult getCombinedResult(Iterable<ComponentAggResult> his, MeasuredData.ComponentType t) {
         ComponentAggResult ret = new ComponentAggResult(t);
         his.forEach(ret::addCAR);
         return ret;

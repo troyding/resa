@@ -1,7 +1,6 @@
 package resa.optimize;
 
 import backtype.storm.Config;
-import backtype.storm.task.GeneralTopologyContext;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
@@ -11,22 +10,15 @@ import java.util.stream.Collectors;
 /**
  * Created by ding on 14-4-30.
  */
-public class SimpleModelOptimizeAnalyzer extends OptimizeAnalyzer {
+public class SimpleModelDecisionMaker extends DecisionMaker {
 
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
 
-    @Override
-    public void init(Map<String, Object> conf, GeneralTopologyContext context) {
-        super.init(conf, context);
-        int historySize = ConfigUtil.getInt(conf, "", 1);
-        spoutAregatedData = new AggregatedData(context, historySize);
-        boltAregatedData = new AggregatedData(context, historySize);
-    }
 
     @Override
-    public OptimizeDecision analyze(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
-                                    Map<String, Integer> currAllocation) {
+    public Map<String, Integer> make(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
+                                     Map<String, Integer> currAllocation) {
         AggResultCalculator aggResultCalculator = new AggResultCalculator(dataStream);
         aggResultCalculator.calCMVStat();
 
@@ -52,8 +44,8 @@ public class SimpleModelOptimizeAnalyzer extends OptimizeAnalyzer {
 
         double avgCompleteHis = spoutAregatedData.compHistoryResults.entrySet().stream().mapToDouble(e -> {
             Iterable<ComponentAggResult> results = e.getValue();
-            ComponentAggResult hisCar = ComponentAggResult.getSimpleCombinedHistory(results,
-                    MeasuredData.ComponentType.BOLT);
+            ComponentAggResult hisCar = ComponentAggResult.getCombinedResult(results,
+                    MeasuredData.ComponentType.SPOUT);
             CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
             return hisCarCombined.getAvg();
         }).average().getAsDouble();
@@ -61,7 +53,7 @@ public class SimpleModelOptimizeAnalyzer extends OptimizeAnalyzer {
         Map<String, ServiceNode> queueingNetwork = boltAregatedData.compHistoryResults.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> {
                     Iterable<ComponentAggResult> results = e.getValue();
-                    ComponentAggResult hisCar = ComponentAggResult.getSimpleCombinedHistory(results,
+                    ComponentAggResult hisCar = ComponentAggResult.getCombinedResult(results,
                             MeasuredData.ComponentType.BOLT);
                     CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
 
@@ -87,7 +79,9 @@ public class SimpleModelOptimizeAnalyzer extends OptimizeAnalyzer {
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
                 .filter(e -> topologyContext.getRawTopology().get_bolts().containsKey(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        return SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, conf, boltAllocation, maxThreadAvailable4Bolt);
+        OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, conf,
+                boltAllocation, maxThreadAvailable4Bolt);
+        return optimizeDecision.currOptAllocation;
     }
 
 }
