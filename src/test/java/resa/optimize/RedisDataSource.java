@@ -12,13 +12,14 @@ import java.util.Map;
  */
 public class RedisDataSource {
 
-    public static List<MeasuredData> readData(String host, int port, String queue) {
+    public static List<MeasuredData> readData(String host, int port, String queue, int maxLen) {
         ObjectMapper objectMapper = new ObjectMapper();
         Jedis jedis = new Jedis(host, port);
         List<MeasuredData> ret = new ArrayList<>();
         try {
             String line = null;
-            while ((line = jedis.lpop(queue)) != null) {
+            int count = 0;
+            while ((line = jedis.lpop(queue)) != null && count++ < maxLen) {
                 String[] tmp = line.split("->");
                 String[] head = tmp[0].split(":");
                 ret.add(new MeasuredData(head[0], Integer.valueOf(head[1]), System.currentTimeMillis(),
@@ -30,6 +31,10 @@ public class RedisDataSource {
             jedis.disconnect();
         }
         return ret;
+    }
+
+    public static List<MeasuredData> readData(String host, int port, String queue) {
+        return readData(host, port, queue, Integer.MAX_VALUE);
     }
 
 }
