@@ -14,6 +14,7 @@ import org.json.simple.JSONValue;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -262,8 +263,9 @@ public class TopologyHelper {
             String topoId = topo.get().get_id();
             TopologyInfo topologyInfo = nimbus.getTopologyInfo(topoId);
             Map topologyConf = (Map) JSONValue.parse(nimbus.getTopologyConf(topoId));
-            Map<String, List<Integer>> comp2Tasks = topologyInfo.get_executors().stream()
-                    .collect(Collectors.toMap(ExecutorSummary::get_component_id, e -> getTaskIds(e.get_executor_info())));
+            Map<String, List<Integer>> comp2Tasks = new HashMap<>();
+            topologyInfo.get_executors().forEach(e -> comp2Tasks.computeIfAbsent(e.get_component_id(),
+                    (k) -> new ArrayList<Integer>()).addAll(getTaskIds(e.get_executor_info())));
             Map<Integer, String> task2Comp = new HashMap<>();
             comp2Tasks.forEach((comp, tasks) -> tasks.forEach((t) -> task2Comp.put(t, comp)));
             StormTopology sysTopology = nimbus.getTopology(topoId);

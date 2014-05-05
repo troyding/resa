@@ -164,7 +164,7 @@ public class SimpleServiceModelAnalyzerTest {
 
         int maxAvailable4Bolt = 6;
 
-        OptimizeDecision ret = SimpleServiceModelAnalyzer.checkOptimized(components, conf, currBoltAllocation, maxAvailable4Bolt);
+        OptimizeDecision ret = SimpleServiceModelAnalyzer.checkOptimized(components, 765.9786516853933, 1500,  currBoltAllocation, maxAvailable4Bolt);
 
         double estimatedLatencyMilliSec = SimpleServiceModelAnalyzer.getErlangChainTopCompleteTimeMilliSec(components, currBoltAllocation);
         double realLatencyMilliSec = ConfigUtil.getDouble(conf, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);

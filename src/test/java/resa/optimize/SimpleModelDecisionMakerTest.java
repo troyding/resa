@@ -6,9 +6,12 @@ import backtype.storm.topology.IRichBolt;
 import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.Config;
+import backtype.storm.utils.NimbusClient;
+import backtype.storm.utils.Utils;
 import org.junit.Test;
 import resa.topology.RandomSentenceSpout;
 import resa.util.ResaConfig;
+import resa.util.TopologyHelper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -99,6 +102,36 @@ public class SimpleModelDecisionMakerTest {
 
         Map<String, Integer> currAllocation = new HashMap<>();
         currAllocation.put("counter", 2);
+        currAllocation.put("split", 4);
+
+        System.out.println(smdm.make(RedisDataSource.readData(host, port, queue, maxLen), 6, currAllocation));
+
+    }
+
+    @Test
+    public void testMakeUsingTopologyHelper() throws Exception {
+
+
+        conf.put(Config.NIMBUS_HOST, "192.168.0.31");
+        conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
+
+        GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc", conf);
+
+        if (gtc == null) {
+            System.out.println("gtc is null");
+            return;
+        }
+
+        SimpleModelDecisionMaker smdm = new  SimpleModelDecisionMaker();
+        smdm.init(conf, gtc);
+
+        String host = "192.168.0.31";
+        int port = 6379;
+        String queue = "ta1wc";
+        int maxLen = 50;
+
+        Map<String, Integer> currAllocation = new HashMap<>();
+        currAllocation.put("counter",2);
         currAllocation.put("split", 4);
 
         System.out.println( smdm.make(RedisDataSource.readData(host, port, queue, maxLen), 6, currAllocation));
