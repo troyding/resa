@@ -257,7 +257,7 @@ public class TopologyHelper {
             Optional<TopologySummary> topo = cluster.get_topologies().stream()
                     .filter(e -> e.get_name().equals(topoName)).findFirst();
             if (!topo.isPresent()) {
-                return null;
+                throw new IllegalArgumentException("Topology is not exist: " + topoName);
             }
             String topoId = topo.get().get_id();
             TopologyInfo topologyInfo = nimbus.getTopologyInfo(topoId);
@@ -272,8 +272,8 @@ public class TopologyHelper {
             return new GeneralTopologyContext(nimbus.getUserTopology(topoId), topologyConf, task2Comp, comp2Tasks,
                     component2Stream2Fields, topoId);
         } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        return null;
     }
 
 }
