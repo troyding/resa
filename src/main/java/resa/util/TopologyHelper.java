@@ -4,7 +4,10 @@ import backtype.storm.generated.*;
 import backtype.storm.scheduler.ExecutorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
+import backtype.storm.task.GeneralTopologyContext;
+import backtype.storm.tuple.Fields;
 import backtype.storm.utils.NimbusClient;
+import backtype.storm.utils.ThriftTopologyUtils;
 import backtype.storm.utils.Utils;
 import org.apache.thrift7.TException;
 import org.json.simple.JSONValue;
@@ -199,6 +202,13 @@ public class TopologyHelper {
         return new ExecutorDetails(executorInfo.get_task_start(), executorInfo.get_task_end());
     }
 
+    private static List<Integer> getTaskIds(ExecutorInfo executorInfo) {
+        int start = executorInfo.get_task_start();
+        int end = executorInfo.get_task_end();
+        return start == end ? Arrays.asList(start)
+                : IntStream.rangeClosed(start, end).boxed().collect(Collectors.toList());
+    }
+
     public static List<Integer> getTaskIds(ExecutorDetails executorDetails) {
         int start = executorDetails.getStartTask();
         int end = executorDetails.getEndTask();
@@ -222,6 +232,46 @@ public class TopologyHelper {
         } catch (TException e) {
         } finally {
             nimbusClient.close();
+        }
+        return null;
+    }
+
+    public static GeneralTopologyContext getGeneralTopologyContext(String topoName, Map<String, Object> conf) {
+        NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+        try {
+            Nimbus.Client nimbus = nimbusClient.getClient();
+            return getGeneralTopologyContext(nimbus, topoName);
+        } finally {
+            nimbusClient.close();
+        }
+    }
+
+    private static Map<String, Fields> getStream2fields(String comp, StormTopology topo) {
+        return ThriftTopologyUtils.getComponentCommon(topo, comp).get_streams().entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> new Fields(e.getValue().get_output_fields())));
+    }
+
+    public static GeneralTopologyContext getGeneralTopologyContext(Nimbus.Client nimbus, String topoName) {
+        try {
+            ClusterSummary cluster = nimbus.getClusterInfo();
+            Optional<TopologySummary> topo = cluster.get_topologies().stream()
+                    .filter(e -> e.get_name().equals(topoName)).findFirst();
+            if (!topo.isPresent()) {
+                return null;
+            }
+            String topoId = topo.get().get_id();
+            TopologyInfo topologyInfo = nimbus.getTopologyInfo(topoId);
+            Map topologyConf = (Map) JSONValue.parse(nimbus.getTopologyConf(topoId));
+            Map<String, List<Integer>> comp2Tasks = topologyInfo.get_executors().stream()
+                    .collect(Collectors.toMap(ExecutorSummary::get_component_id, e -> getTaskIds(e.get_executor_info())));
+            Map<Integer, String> task2Comp = new HashMap<>();
+            comp2Tasks.forEach((comp, tasks) -> tasks.forEach((t) -> task2Comp.put(t, comp)));
+            StormTopology sysTopology = nimbus.getTopology(topoId);
+            Map<String, Map<String, Fields>> component2Stream2Fields = ThriftTopologyUtils.getComponentIds(sysTopology)
+                    .stream().collect(Collectors.toMap(comp -> comp, comp -> getStream2fields(comp, sysTopology)));
+            return new GeneralTopologyContext(nimbus.getUserTopology(topoId), topologyConf, task2Comp, comp2Tasks,
+                    component2Stream2Fields, topoId);
+        } catch (Exception e) {
         }
         return null;
     }
