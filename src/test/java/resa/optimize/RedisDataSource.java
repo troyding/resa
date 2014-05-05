@@ -3,6 +3,9 @@ package resa.optimize;
 import org.codehaus.jackson.map.ObjectMapper;
 import redis.clients.jedis.Jedis;
 
+import java.io.BufferedWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,8 +36,27 @@ public class RedisDataSource {
         return ret;
     }
 
+    public static void writeData2File(String host, int port, String queue, int maxLen, String outputFile) {
+        Jedis jedis = new Jedis(host, port);
+        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(outputFile))) {
+            String line = null;
+            int count = 0;
+            while ((line = jedis.lpop(queue)) != null && count++ < maxLen) {
+                writer.append(line);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            jedis.disconnect();
+        }
+    }
+
     public static List<MeasuredData> readData(String host, int port, String queue) {
         return readData(host, port, queue, Integer.MAX_VALUE);
+    }
+
+    public static void main(String[] args) {
+        writeData2File(args[0], Integer.parseInt(args[1]), args[2], Integer.parseInt(args[3]), args[4]);
     }
 
 }
