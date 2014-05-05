@@ -2,6 +2,7 @@ package resa.optimize;
 
 import backtype.storm.Config;
 import backtype.storm.task.GeneralTopologyContext;
+import org.apache.log4j.Logger;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
@@ -12,7 +13,7 @@ import java.util.stream.Collectors;
  * Created by ding on 14-4-30.
  */
 public class SimpleModelDecisionMaker extends DecisionMaker {
-
+    private static final Logger LOG = Logger.getLogger(SimpleModelDecisionMaker.class);
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
 
@@ -78,6 +79,14 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
                     boolean recvQlenNormalHis = avgRecvQLenHis < recvQSizeThresh;
 
+                    LOG.info("avgSendQLenHis: " + avgSendQLenHis);
+                    LOG.info("avgRecvQLenHis: " + avgRecvQLenHis);
+                    LOG.info("arrivalRateHis: " + arrivalRateHis);
+                    LOG.info("avgServTimeHis: " + avgServTimeHis);
+                    LOG.info("rhoHis: " + rhoHis);
+                    LOG.info("lambdaHis: " + lambdaHis);
+                    LOG.info("muHis: " + muHis);
+
                     return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, 1);
                 }));
         int maxThreadAvailable4Bolt = maxAvailableExectors - currAllocation.entrySet().stream()
@@ -89,6 +98,8 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, conf,
                 boltAllocation, maxThreadAvailable4Bolt);
+                LOG.info("minReq: " + optimizeDecision.minReqOptAllocation);
+                LOG.info("status: " + optimizeDecision.status);
         return optimizeDecision.currOptAllocation;
     }
 
