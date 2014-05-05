@@ -45,7 +45,6 @@ public class RedisDataSource {
                 writer.append(line);
             }
         } catch (Exception e) {
-            e.printStackTrace();
         } finally {
             jedis.disconnect();
         }
