@@ -20,7 +20,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
     @Override
     public void init(Map<String, Object> conf, GeneralTopologyContext context) {
         super.init(conf, context);
-        int historySize = ConfigUtil.getInt(conf, "", 1);
+        int historySize = ConfigUtil.getInt(conf, "resa.opt.win.history.size", 1);
         spoutAregatedData = new AggregatedData(context, historySize);
         boltAregatedData = new AggregatedData(context, historySize);
     }
@@ -37,13 +37,13 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         boltAregatedData.rotate();
 
         ///Temp use, assume only one running topology!
-        double targetQoS = ConfigUtil.getDouble(conf, "QoS", 5000.0);
+        double targetQoSMs = ConfigUtil.getDouble(conf, "resa.opt.smd.qos.ms", 5000.0);
         int maxSendQSize = ConfigUtil.getInt(conf, Config.TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE, 1024);
         int maxRecvQSize = ConfigUtil.getInt(conf, Config.TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE, 1024);
-        double sendQSizeThresh = ConfigUtil.getDouble(conf, "sendQSizeThresh", 5.0);
-        double recvQSizeThreshRatio = ConfigUtil.getDouble(conf, "recvQSizeThreshRatio", 0.6);
+        double sendQSizeThresh = ConfigUtil.getDouble(conf, "resa.opt.smd.sq.thresh", 5.0);
+        double recvQSizeThreshRatio = ConfigUtil.getDouble(conf, "resa.opt.smd.rq.thresh.ratio", 0.6);
         double recvQSizeThresh = recvQSizeThreshRatio * maxRecvQSize;
-        double updInterval = ConfigUtil.getDouble(conf, "messageUpdateInterval", 10.0);
+        double updInterval = ConfigUtil.getDouble(conf, Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS, 10.0);
 
         double mesuredCompleteTimeMilliSec = 0.0;
 
@@ -58,7 +58,6 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
             CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
             return hisCarCombined.getAvg();
         }).average().getAsDouble();
-        conf.put("avgCompleteHisMilliSec", avgCompleteHis);
         Map<String, ServiceNode> queueingNetwork = boltAregatedData.compHistoryResults.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> {
                     Iterable<ComponentAggResult> results = e.getValue();
@@ -72,8 +71,8 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                     double avgServTimeHis = hisCarCombined.getAvg();
 
                     double rhoHis = arrivalRateHis * avgServTimeHis / 1000;
-                    //TODO change to executor count
-                    double lambdaHis = arrivalRateHis * topologyContext.getComponentTasks(e.getKey()).size();
+
+                    double lambdaHis = arrivalRateHis * currAllocation.get(e.getKey());
                     double muHis = 1000.0 / avgServTimeHis;
 
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
@@ -92,14 +91,13 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         int maxThreadAvailable4Bolt = maxAvailableExectors - currAllocation.entrySet().stream()
                 .filter(e -> topologyContext.getRawTopology().get_spouts().containsKey(e.getKey()))
                 .mapToInt(Map.Entry::getValue).sum();
-        conf.put("maxThreadAvailable4Bolt", maxThreadAvailable4Bolt);
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
                 .filter(e -> topologyContext.getRawTopology().get_bolts().containsKey(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, conf,
-                boltAllocation, maxThreadAvailable4Bolt);
-                LOG.info("minReq: " + optimizeDecision.minReqOptAllocation);
-                LOG.info("status: " + optimizeDecision.status);
+        OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, avgCompleteHis,
+                targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
+        LOG.info("minReq: " + optimizeDecision.minReqOptAllocation);
+        LOG.info("status: " + optimizeDecision.status);
         return optimizeDecision.currOptAllocation;
     }
 

@@ -24,19 +24,21 @@ public class ResaMetricsCollector extends FilteredMetricsCollector {
         METRICS_NAME_MAPPING.put("execute", MetricNames.TASK_EXECUTE);
     }
 
-    private volatile List<MeasuredData> measureBuffer = new ArrayList<>(100);
+    private int bufferSize = 100;
+    private volatile List<MeasuredData> measureBuffer;
     private TopologyOptimizer topologyOptimizer = new TopologyOptimizer();
 
     @Override
     public void prepare(Map conf, Object arg, TopologyContext context, IErrorReporter errorReporter) {
         super.prepare(conf, arg, context, errorReporter);
+        measureBuffer = new ArrayList<>(bufferSize);
         topologyOptimizer.init((String) conf.get(Config.TOPOLOGY_NAME), conf, this::getCachedDataAndClearBuffer);
         topologyOptimizer.start();
     }
 
     private List<MeasuredData> getCachedDataAndClearBuffer() {
         List<MeasuredData> ret = measureBuffer;
-        measureBuffer = new ArrayList<>(100);
+        measureBuffer = new ArrayList<>(bufferSize);
         return ret;
     }
 
@@ -53,4 +55,9 @@ public class ResaMetricsCollector extends FilteredMetricsCollector {
         measureBuffer.add(new MeasuredData(taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
     }
 
+    @Override
+    public void cleanup() {
+        super.cleanup();
+        topologyOptimizer.stop();
+    }
 }

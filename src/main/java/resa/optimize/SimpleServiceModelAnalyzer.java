@@ -173,17 +173,16 @@ public class SimpleServiceModelAnalyzer {
         return Objects.requireNonNull(allocation).values().stream().mapToInt(i -> i).sum();
     }
 
-    public static OptimizeDecision checkOptimized(Map<String, ServiceNode> queueingNetwork, Map<String, Object> conf,
-                                                  Map<String, Integer> currBoltAllocation, int maxAvailable4Bolt) {
+    public static OptimizeDecision checkOptimized(Map<String, ServiceNode> queueingNetwork, double realLatencyMilliSec,
+                                                  double targetQoSMilliSec, Map<String, Integer> currBoltAllocation,
+                                                  int maxAvailable4Bolt) {
 
         ///Caution about the time unit!, second is used in all the functions of calculation
         /// millisecond is used in the output display!
         double estimatedLatencyMilliSec = getErlangChainTopCompleteTimeMilliSec(queueingNetwork, currBoltAllocation);
-        double realLatencyMilliSec = ConfigUtil.getDouble(conf, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);
 
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
-        double targetQoSMilliSec = ConfigUtil.getDouble(conf, "QoS", 5000.0);
         Map<String, Integer> minReqAllocation = getMinReqServerAllocation(queueingNetwork, targetQoSMilliSec / 1000.0,
                 underEstimateRatio);
         OptimizeDecision.Status status = OptimizeDecision.Status.FEASIBALE;
