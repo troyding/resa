@@ -7,13 +7,13 @@ public class QueueAggResult implements Cloneable {
 
     private long arrivalCount;
     private long duration;
-    private long totalQueueLenth;
+    private long totalQueueLength;
     private int totalSampleCount;
 
-    public QueueAggResult(long arrivalCount, long duration, long totalQueueLenth, int totalSampleCount) {
+    public QueueAggResult(long arrivalCount, long duration, long totalQueueLength, int totalSampleCount) {
         this.arrivalCount = arrivalCount;
         this.duration = duration;
-        this.totalQueueLenth = totalQueueLenth;
+        this.totalQueueLength = totalQueueLength;
         this.totalSampleCount = totalSampleCount;
     }
 
@@ -21,8 +21,8 @@ public class QueueAggResult implements Cloneable {
         this(0, 0, 0, 0);
     }
 
-    public int getAvgQueueLength() {
-        return (int) (totalQueueLenth / totalSampleCount);
+    public double getAvgQueueLength() {
+        return totalSampleCount > 0 ? (double)totalQueueLength / (double)totalSampleCount : 0.0;
     }
 
     public double getArrivalRatePerSec() {
@@ -33,8 +33,8 @@ public class QueueAggResult implements Cloneable {
         return arrivalCount;
     }
 
-    public long getTotalQueueLenth() {
-        return totalQueueLenth;
+    public long getTotalQueueLength() {
+        return totalQueueLength;
     }
 
     public long getDuration() {
@@ -48,14 +48,14 @@ public class QueueAggResult implements Cloneable {
     public void add(QueueAggResult result) {
         arrivalCount += result.arrivalCount;
         duration += result.duration;
-        totalQueueLenth += result.totalQueueLenth;
+        totalQueueLength += result.totalQueueLength;
         totalSampleCount += result.totalSampleCount;
     }
 
     public void add(long arrivalCount, long duration, long totalQueueLenth, int totalSampleCount) {
         this.arrivalCount += arrivalCount;
         this.duration += duration;
-        this.totalQueueLenth += totalQueueLenth;
+        this.totalQueueLength += totalQueueLenth;
         this.totalSampleCount += totalSampleCount;
     }
 }
