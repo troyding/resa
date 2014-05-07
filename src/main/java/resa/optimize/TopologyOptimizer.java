@@ -3,18 +3,17 @@ package resa.optimize;
 import backtype.storm.Config;
 import backtype.storm.generated.Nimbus;
 import backtype.storm.generated.RebalanceOptions;
+import backtype.storm.generated.StormTopology;
 import backtype.storm.generated.TopologyInfo;
-import backtype.storm.task.GeneralTopologyContext;
+import backtype.storm.scheduler.ExecutorDetails;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import org.apache.log4j.Logger;
+import resa.metrics.MeasuredData;
 import resa.util.ConfigUtil;
 import resa.util.TopologyHelper;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static resa.util.ResaConfig.*;
@@ -36,7 +35,8 @@ public class TopologyOptimizer {
     private int rebalanceWaitingSecs;
     private Nimbus.Client nimbus;
     private String topologyName;
-    private GeneralTopologyContext topologyContext;
+    private String topologyId;
+    private StormTopology rawTopology;
     private Map<String, Object> conf;
     private MeasuredSource measuredSource;
     private DecisionMaker decisionMaker;
@@ -49,7 +49,8 @@ public class TopologyOptimizer {
         rebalanceWaitingSecs = ConfigUtil.getInt(conf, REBALANCE_WAITING_SECS, -1);
         // connected to nimbus
         nimbus = NimbusClient.getConfiguredClient(conf).getClient();
-        this.topologyContext = getGeneralTopologyContext();
+        this.topologyId = TopologyHelper.getTopologyId(nimbus, topologyName);
+        this.rawTopology = getRawTopologyThrow();
         // current allocation should be retrieved from nimbus
         currAllocation = getTopologyCurrAllocation();
         try {
@@ -59,8 +60,7 @@ public class TopologyOptimizer {
         } catch (Exception e) {
             throw new RuntimeException("Create Analyzer failed", e);
         }
-        decisionMaker.init(conf, topologyContext);
-
+        decisionMaker.init(conf, currAllocation, rawTopology);
     }
 
     public void start() {
@@ -78,32 +78,57 @@ public class TopologyOptimizer {
         @Override
         public void run() {
             Iterable<MeasuredData> data = measuredSource.retrieve();
-            Map<String, Integer> newAllocation = calcNewAllocation(data);
-            if (newAllocation != null && !newAllocation.equals(currAllocation)) {
-                LOG.info("Detected topology allocation changed, request rebalance....");
-                if (requestRebalance(newAllocation)) {
-                    currAllocation = newAllocation;
+            // get current ExecutorDetails from nimbus
+            Map<String, List<ExecutorDetails>> topoExecutors = TopologyHelper.getTopologyExecutors(nimbus, topologyId);
+            // topoExecutors == null means nimbus temporarily unreachable or this topology has been killed
+            Map<String, Integer> allc = topoExecutors != null ? calcAllocation(topoExecutors) : null;
+            if (allc != null && !allc.equals(currAllocation)) {
+                LOG.info("Topology allocation changed");
+                currAllocation = allc;
+                // discard old MeasuredData
+                consumeData(data);
+                decisionMaker.allocationChanged(Collections.unmodifiableMap(currAllocation));
+            } else {
+                AggResultCalculator calculator = new AggResultCalculator(data, topoExecutors, rawTopology);
+                calculator.calCMVStat();
+                Map<String, Integer> newAllocation = calcNewAllocation(calculator.getResults());
+                if (newAllocation != null && !newAllocation.equals(currAllocation)) {
+                    LOG.info("Detected topology allocation changed, request rebalance....");
+                    requestRebalance(newAllocation);
                 }
             }
         }
 
-        private Map<String, Integer> calcNewAllocation(Iterable<MeasuredData> data) {
-            Map<String, Integer> decision = decisionMaker.make(data,
-                    Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 0),
-                            getNumWorkers(currAllocation)), currAllocation
-            );
+        private void consumeData(Iterable<MeasuredData> data) {
+            data.forEach((e) -> {
+            });
+        }
+
+        private Map<String, Integer> calcAllocation(Map<String, List<ExecutorDetails>> topoExecutors) {
+            return topoExecutors.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().size()));
+        }
+
+        private Map<String, Integer> calcNewAllocation(Map<String, AggResult[]> data) {
+            int maxExecutors = Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 1),
+                    getNumWorkers(currAllocation)) * maxExecutorsPerWorker;
+            Map<String, Integer> decision = decisionMaker.make(data, maxExecutors);
             return decision;
         }
     }
 
-    private GeneralTopologyContext getGeneralTopologyContext() {
-        return TopologyHelper.getGeneralTopologyContext(nimbus, topologyName);
+    private StormTopology getRawTopologyThrow() {
+        try {
+            return nimbus.getUserTopology(topologyId);
+        } catch (Exception e) {
+            throw new RuntimeException("Get raw topology failed, id is " + topologyId, e);
+        }
     }
 
     /* call nimbus to get current topology allocation */
     private Map<String, Integer> getTopologyCurrAllocation() {
         try {
-            TopologyInfo topoInfo = nimbus.getTopologyInfo(topologyContext.getStormId());
+            TopologyInfo topoInfo = nimbus.getTopologyInfo(topologyId);
             return topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
                     .collect(Collectors.groupingBy(e -> e.get_component_id(),
                             Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));

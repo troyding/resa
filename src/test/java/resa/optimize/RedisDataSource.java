@@ -2,6 +2,7 @@ package resa.optimize;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import redis.clients.jedis.Jedis;
+import resa.metrics.MeasuredData;
 
 import java.io.BufferedWriter;
 import java.nio.file.Files;

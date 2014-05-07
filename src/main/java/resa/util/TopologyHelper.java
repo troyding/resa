@@ -14,7 +14,6 @@ import org.json.simple.JSONValue;
 
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -222,17 +221,50 @@ public class TopologyHelper {
         return topologyId.substring(0, split);
     }
 
+    public static Map<String, List<ExecutorDetails>> getTopologyExecutors(Nimbus.Client nimbus, String topoId) {
+        try {
+            TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
+            return parseCompExecutors(topoInfo);
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
+    public static Map<String, List<ExecutorDetails>> getTopologyExecutors(String topoName, Map<String, Object> conf) {
+        NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+        try {
+            Nimbus.Client nimbus = nimbusClient.getClient();
+            String topoId = getTopologyId(nimbus, topoName);
+            return getTopologyExecutors(nimbus, topoId);
+        } catch (Exception e) {
+        } finally {
+            nimbusClient.close();
+        }
+        return null;
+    }
+
+    public static Map<String, List<ExecutorDetails>> parseCompExecutors(TopologyInfo topoInfo) {
+        return topoInfo.get_executors().stream().collect(Collectors.groupingBy(ExecutorSummary::get_component_id,
+                Collectors.mapping(e -> toExecutorDetails(e.get_executor_info()), Collectors.toList())));
+    }
+
     public static String getTopologyId(String topoName, Map<String, Object> conf) {
         NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
         try {
             Nimbus.Client nimbus = nimbusClient.getClient();
+            return getTopologyId(nimbus, topoName);
+        } finally {
+            nimbusClient.close();
+        }
+    }
+
+    public static String getTopologyId(Nimbus.Client nimbus, String topoName) {
+        try {
             ClusterSummary cluster = nimbus.getClusterInfo();
             return cluster.get_topologies().stream()
                     .filter(e -> e.get_name().equals(topoName)).findFirst()
                     .map(topoSummary -> topoSummary == null ? null : topoSummary.get_id()).get();
         } catch (TException e) {
-        } finally {
-            nimbusClient.close();
         }
         return null;
     }

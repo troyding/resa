@@ -1,4 +1,4 @@
-package resa.optimize;
+package resa.metrics;
 
 import java.util.Map;
 

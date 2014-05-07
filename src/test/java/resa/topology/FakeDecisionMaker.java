@@ -1,7 +1,7 @@
 package resa.topology;
 
+import resa.optimize.AggResult;
 import resa.optimize.DecisionMaker;
-import resa.optimize.MeasuredData;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,8 +14,7 @@ import java.util.Map;
 public class FakeDecisionMaker extends DecisionMaker {
 
     @Override
-    public Map<String, Integer> make(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
-                                     Map<String, Integer> currAllocation) {
+    public Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors) {
         Map<String, Integer> ret = new HashMap<>(currAllocation);
         ArrayList<Map.Entry<String, Integer>> tmp = new ArrayList<>(ret.entrySet());
         Collections.shuffle(tmp);

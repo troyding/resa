@@ -1,10 +1,15 @@
 package resa.optimize;
 
-import backtype.storm.task.GeneralTopologyContext;
+import backtype.storm.generated.StormTopology;
+import backtype.storm.scheduler.ExecutorDetails;
+import resa.metrics.MeasuredData;
 import resa.metrics.MetricNames;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by ding on 14-3-4.
@@ -12,18 +17,90 @@ import java.util.Map;
  * Recv-Queue arrival count includes ack for each message
  * When calculate sum and average, need to adjust (sum - #message, average - 1) for accurate value.
  */
-public class AggResultCalculator {
-
-    public AggResultCalculator(Iterable<MeasuredData> dataStream, GeneralTopologyContext context) {
-        this.dataStream = dataStream;
-        this.topologyContext = context;
-    }
+class AggResultCalculator {
 
     protected Iterable<MeasuredData> dataStream;
-    private GeneralTopologyContext topologyContext;
+    private StormTopology rawTopo;
+    private final Map<Integer, AggResult> task2Result = new HashMap<>();
+    private final Map<String, AggResult[]> results = new HashMap<>();
 
-    private Map<Integer, ComponentAggResult> spoutResult = new HashMap<>();
-    private Map<Integer, ComponentAggResult> boltResult = new HashMap<>();
+    public AggResultCalculator(Iterable<MeasuredData> dataStream, Map<String, List<ExecutorDetails>> comp2Executors,
+                               StormTopology rawTopo) {
+        this.dataStream = dataStream;
+        this.rawTopo = rawTopo;
+        comp2Executors.forEach((comp, exeList) -> {
+            AggResult[] result;
+            if (rawTopo.get_spouts().containsKey(comp)) {
+                result = new SpoutAggResult[exeList.size()];
+                for (int i = 0; i < result.length; i++) {
+                    result[i] = createTaskIndex(new SpoutAggResult(), exeList.get(i));
+                }
+            } else {
+                result = new BoltAggResult[exeList.size()];
+                for (int i = 0; i < result.length; i++) {
+                    result[i] = createTaskIndex(new BoltAggResult(), exeList.get(i));
+                }
+            }
+            results.put(comp, result);
+        });
+    }
+
+    private AggResult createTaskIndex(AggResult result, ExecutorDetails e) {
+        IntStream.rangeClosed(e.getStartTask(), e.getEndTask()).forEach((task) -> task2Result.put(task, result));
+        return result;
+    }
+
+    private AggResult parse(MeasuredData measuredData, AggResult dest) {
+        // parse send queue and recv queue first
+        measuredData.data.computeIfPresent(MetricNames.SEND_QUEUE, (comp, data) -> {
+            parseQueueResult((Map<String, Number>) data, dest.getSendQueueResult());
+            return data;
+        });
+        measuredData.data.computeIfPresent(MetricNames.RECV_QUEUE, (comp, data) -> {
+            parseQueueResult((Map<String, Number>) data, dest.getRecvQueueResult());
+            return data;
+        });
+        if (rawTopo.get_spouts().containsKey(measuredData.component)) {
+            Map<String, Object> data = (Map<String, Object>) measuredData.data.get(MetricNames.COMPLETE_LATENCY);
+            if (data != null) {
+                data.forEach((stream, elementStr) -> {
+                    String[] elements = ((String) elementStr).split(",");
+                    int cnt = Integer.valueOf(elements[0]);
+                    if (cnt > 0) {
+                        double val = Double.valueOf(elements[1]);
+                        double val_2 = Double.valueOf(elements[2]);
+                        ((SpoutAggResult) dest).getCompletedLatency().computeIfAbsent(stream, (k) -> new CntMeanVar())
+                                .addAggWin(cnt, val, val_2);
+                    }
+                });
+            }
+        } else {
+            Map<String, Object> data = (Map<String, Object>) measuredData.data.get(MetricNames.TASK_EXECUTE);
+            if (data != null) {
+                data.forEach((stream, elementStr) -> {
+                    String[] elements = ((String) elementStr).split(",");
+                    int cnt = Integer.valueOf(elements[0]);
+                    if (cnt > 0) {
+                        double val = Double.valueOf(elements[1]);
+                        double val_2 = Double.valueOf(elements[2]);
+                        ((BoltAggResult) dest).getTupleProcess().computeIfAbsent(stream, (k) -> new CntMeanVar())
+                                .addAggWin(cnt, val, val_2);
+                    }
+                });
+            }
+        }
+        return dest;
+    }
+
+    private void parseQueueResult(Map<String, Number> queueMetrics, QueueAggResult queueResult) {
+        long totalArrivalCnt = queueMetrics.getOrDefault("totalCount", Integer.valueOf(0)).longValue();
+        if (totalArrivalCnt > 0) {
+            int sampleCnt = queueMetrics.getOrDefault("sampleCount", Integer.valueOf(0)).intValue();
+            long totalQLen = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
+            long duration = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
+            queueResult.add(totalArrivalCnt, duration, totalQLen, sampleCnt);
+        }
+    }
 
     public void calCMVStat() {
 
@@ -33,142 +110,22 @@ public class AggResultCalculator {
             //70) "projection:7->{\"receive\":{\"sampleCount\":52,\"totalQueueLen\":53,\"totalCount\":1052},\"sendqueue\":{\"sampleCount\":2152,\"totalQueueLen\":4514,\"totalCount\":43052},\"execute\":{\"objectSpout:default\":\"525,709.4337659999997,1120.8007487084597\"}}"
             //71) "detector:3->{\"receive\":{\"sampleCount\":2769,\"totalQueueLen\":6088758,\"totalCount\":55416},\"sendqueue\":{\"sampleCount\":8921,\"totalQueueLen\":11476,\"totalCount\":178402},\"execute\":{\"projection:default\":\"49200,5167.623237000047,721.6383647758853\"}}"
             //73) "updater:9->{\"receive\":{\"sampleCount\":3921,\"totalQueueLen\":5495,\"totalCount\":78436},\"sendqueue\":{\"sampleCount\":4001,\"totalQueueLen\":4336,\"totalCount\":80002},\"execute\":{\"detector:default\":\"40000,1651.7782049999894,182.68124734051045\"}}"
-            Map<String, Object> componentData = measuredData.data;
-
-            String componentName = measuredData.component;
-            int taskId = measuredData.task;
-            ComponentAggResult car;
-            if (topologyContext.getRawTopology().get_spouts().containsKey(measuredData.component)) {
-                car = spoutResult.computeIfAbsent(taskId,
-                        (k) -> new ComponentAggResult(ComponentAggResult.ComponentType.SPOUT));
-            } else {
-                car = boltResult.computeIfAbsent(taskId,
-                        (k) -> new ComponentAggResult(ComponentAggResult.ComponentType.BOLT));
-            }
-
-            for (Map.Entry<String, Object> e : componentData.entrySet()) {
-                switch (e.getKey()) {
-                    case MetricNames.COMPLETE_LATENCY:
-                    case MetricNames.TASK_EXECUTE:
-                        ((Map<String, Object>) e.getValue()).forEach((streamName, elementStr) -> {
-                            String[] elements = ((String) elementStr).split(",");
-                            int cnt = Integer.valueOf(elements[0]);
-                            if (cnt > 0) {
-                                double val = Double.valueOf(elements[1]);
-                                double val_2 = Double.valueOf(elements[2]);
-                                car.tupleProcess.computeIfAbsent(streamName, (k) -> new CntMeanVar())
-                                        .addAggWin(cnt, val, val_2);
-                            }
-                        });
-                        break;
-                    case MetricNames.SEND_QUEUE: {
-                        Map<String, Number> queueMetrics = (Map<String, Number>) e.getValue();
-                        long sampleCnt = queueMetrics.getOrDefault("sampleCount", Integer.valueOf(0)).longValue();
-                        long totalQLen = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
-                        long totalArrivalCnt = queueMetrics.getOrDefault("totalCount", Integer.valueOf(0)).longValue();
-
-                        if (sampleCnt > 0) {
-                            car.sendQueueSampleCnt.addOneNumber(sampleCnt);
-                            double avgQLen = (double) totalQLen / sampleCnt;
-                            car.sendQueueLen.addOneNumber(avgQLen);
-                        }
-
-                        if (totalArrivalCnt > 0) {
-                            car.sendArrivalCnt.addOneNumber(totalArrivalCnt);
-                        }
-                        break;
-                    }
-                    case MetricNames.RECV_QUEUE: {
-                        Map<String, Number> queueMetrics = (Map<String, Number>) e.getValue();
-                        long sampleCnt = queueMetrics.getOrDefault("sampleCount", Integer.valueOf(0)).longValue();
-                        long totalQLen = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
-                        long totalArrivalCnt = queueMetrics.getOrDefault("totalCount", Integer.valueOf(0)).longValue();
-
-                        if (sampleCnt > 0) {
-                            car.recvQueueSampleCnt.addOneNumber((double) sampleCnt);
-                            double avgQLen = (double) totalQLen / (double) sampleCnt;
-                            car.recvQueueLen.addOneNumber(avgQLen);
-                        }
-                        if (totalArrivalCnt > 0) {
-                            car.recvArrivalCnt.addOneNumber((double) totalArrivalCnt);
-                        }
-                        break;
-                    }
-                    default:
-                        throw new IllegalStateException("Cannot reach here");
-                }
-            }
+            AggResult car = task2Result.get(measuredData.task);
+            parse(measuredData, car);
         }
     }
 
-    public Map<Integer, ComponentAggResult> getSpoutResult() {
-        return spoutResult;
+    public Map<String, AggResult[]> getResults() {
+        return results;
     }
 
-    public Map<Integer, ComponentAggResult> getBoltResult() {
-        return boltResult;
+    public Map<String, AggResult[]> getSpoutResults() {
+        return results.entrySet().stream().filter(e -> rawTopo.get_spouts().containsKey(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public static void printCMVStat(Map<String, ComponentAggResult> result) {
-        if (result == null) {
-            System.out.println("input AggResult is null.");
-            return;
-        }
-
-        for (Map.Entry<String, ComponentAggResult> e : result.entrySet()) {
-            String cid = e.getKey();
-            String componentName = cid.split(":")[0];
-            String taskID = cid.split(":")[1];
-
-            ComponentAggResult car = e.getValue();
-            int tupleProcessCnt = car.tupleProcess.size();
-
-            System.out.println("-------------------------------------------------------------------------------");
-            System.out.println("ComponentName: " + componentName + ", taskID: " + taskID + ", type: " + car.getComponentType() + ", tupleProcessCnt: " + tupleProcessCnt);
-            ///System.out.println("---------------------------------------------------------------------------");
-            System.out.println("SendQueue->SampleCnt: " + car.sendQueueSampleCnt.toCMVString());
-            System.out.println("SendQueue->QueueLen: " + car.sendQueueLen.toCMVString());
-            System.out.println("SendQueue->Arrival: " + car.sendArrivalCnt.toCMVString());
-            ///System.out.println("---------------------------------------------------------------------------");
-            System.out.println("RecvQueue->SampleCnt: " + car.recvQueueSampleCnt.toCMVString());
-            System.out.println("RecvQueue->QueueLen: " + car.recvQueueLen.toCMVString());
-            System.out.println("RecvQueue->Arrival: " + car.recvArrivalCnt.toCMVString());
-            ///System.out.println("---------------------------------------------------------------------------");
-            if (tupleProcessCnt > 0) {
-                for (Map.Entry<String, CntMeanVar> innerE : car.tupleProcess.entrySet()) {
-                    System.out.println(car.getProcessString() + "->" + innerE.getKey() + ":" + innerE.getValue().toCMVString());
-                }
-            }
-            System.out.println("-------------------------------------------------------------------------------");
-        }
-
-    }
-
-    public static void printCMVStatShort(Map<String, ComponentAggResult> result) {
-        if (result == null) {
-            System.out.println("input AggResult is null.");
-            return;
-        }
-
-        for (Map.Entry<String, ComponentAggResult> e : result.entrySet()) {
-            String cid = e.getKey();
-            String componentName = cid.split(":")[0];
-            String taskID = cid.split(":")[1];
-
-            ComponentAggResult car = e.getValue();
-            int tupleProcessCnt = car.tupleProcess.size();
-
-            System.out.print(componentName + ":" + taskID + ":" + car.getComponentType());
-            System.out.print(",RQ:" + car.recvQueueLen.toCMVStringShort());
-            System.out.print(",Arrl:" + car.recvArrivalCnt.toCMVStringShort());
-            System.out.println(",SQ:" + car.sendQueueLen.toCMVStringShort());
-
-            if (tupleProcessCnt > 0) {
-                for (Map.Entry<String, CntMeanVar> innerE : car.tupleProcess.entrySet()) {
-                    System.out.println(car.getProcessString() + "->" + innerE.getKey() + ":" + innerE.getValue().toCMVString());
-                }
-            }
-            System.out.println("-------------------------------------------------------------------------------");
-        }
+    public Map<String, AggResult[]> getBoltResults() {
+        return results.entrySet().stream().filter(e -> rawTopo.get_bolts().containsKey(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }

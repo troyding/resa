@@ -1,23 +1,41 @@
 package resa.optimize;
 
-import backtype.storm.task.GeneralTopologyContext;
+import backtype.storm.generated.StormTopology;
 
 import java.util.Map;
 
 /**
+ * Note: All the methods in this class will be invoked in the same thread, so it is not need to make
+ * them synchronized.
  * Created by ding on 14-4-30.
  */
 public abstract class DecisionMaker {
 
-    protected GeneralTopologyContext topologyContext;
+    protected StormTopology rawTopology;
     protected Map<String, Object> conf;
+    protected Map<String, Integer> currAllocation;
 
-    public void init(Map<String, Object> conf, GeneralTopologyContext context) {
+    /**
+     * Called when a new instance was created.
+     *
+     * @param conf
+     * @param rawTopology
+     */
+    public void init(Map<String, Object> conf, Map<String, Integer> currAllocation, StormTopology rawTopology) {
         this.conf = conf;
-        this.topologyContext = context;
+        this.rawTopology = rawTopology;
+        this.currAllocation = currAllocation;
     }
 
-    public abstract Map<String, Integer> make(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
-                                              Map<String, Integer> currAllocation);
+    /**
+     * This method will be invoked only when currAllocation was changed.
+     *
+     * @param newAllocation
+     */
+    public void allocationChanged(Map<String, Integer> newAllocation) {
+        this.currAllocation = newAllocation;
+    }
+
+    public abstract Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors);
 
 }

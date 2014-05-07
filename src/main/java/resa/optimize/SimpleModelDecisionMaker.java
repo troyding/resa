@@ -1,7 +1,7 @@
 package resa.optimize;
 
 import backtype.storm.Config;
-import backtype.storm.task.GeneralTopologyContext;
+import backtype.storm.generated.StormTopology;
 import org.apache.log4j.Logger;
 import resa.util.ConfigUtil;
 
@@ -16,25 +16,31 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
     private static final Logger LOG = Logger.getLogger(SimpleModelDecisionMaker.class);
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
+    private int historySize;
+    private int currHistory;
 
     @Override
-    public void init(Map<String, Object> conf, GeneralTopologyContext context) {
-        super.init(conf, context);
-        int historySize = ConfigUtil.getInt(conf, "resa.opt.win.history.size", 1);
-        spoutAregatedData = new AggregatedData(context, historySize);
-        boltAregatedData = new AggregatedData(context, historySize);
+    public void init(Map<String, Object> conf, Map<String, Integer> currAllocation, StormTopology rawTopology) {
+        super.init(conf, currAllocation, rawTopology);
+        historySize = ConfigUtil.getInt(conf, "resa.opt.win.history.size", 1);
+        currHistory = 0;
+        spoutAregatedData = new AggregatedData(rawTopology, historySize);
+        boltAregatedData = new AggregatedData(rawTopology, historySize);
     }
 
     @Override
-    public Map<String, Integer> make(Iterable<MeasuredData> dataStream, int maxAvailableExectors,
-                                     Map<String, Integer> currAllocation) {
-        AggResultCalculator aggResultCalculator = new AggResultCalculator(dataStream, topologyContext);
-        aggResultCalculator.calCMVStat();
-
-        aggResultCalculator.getSpoutResult().forEach(spoutAregatedData::putResult);
-        aggResultCalculator.getBoltResult().forEach(boltAregatedData::putResult);
-        spoutAregatedData.rotate();
-        boltAregatedData.rotate();
+    public Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors) {
+        executorAggResults.entrySet().stream().filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
+                .forEach(e -> spoutAregatedData.putResult(e.getKey(), e.getValue()));
+        executorAggResults.entrySet().stream().filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
+                .forEach(e -> boltAregatedData.putResult(e.getKey(), e.getValue()));
+        // check history size. Ensure we have enough history data before we run the optimize function
+        currHistory++;
+        if (currHistory < historySize) {
+            return null;
+        } else {
+            currHistory = historySize;
+        }
 
         ///Temp use, assume only one running topology!
         double targetQoSMs = ConfigUtil.getDouble(conf, "resa.opt.smd.qos.ms", 5000.0);
@@ -43,7 +49,6 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         double sendQSizeThresh = ConfigUtil.getDouble(conf, "resa.opt.smd.sq.thresh", 5.0);
         double recvQSizeThreshRatio = ConfigUtil.getDouble(conf, "resa.opt.smd.rq.thresh.ratio", 0.6);
         double recvQSizeThresh = recvQSizeThreshRatio * maxRecvQSize;
-        double updInterval = ConfigUtil.getDouble(conf, Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS, 10.0);
 
         double mesuredCompleteTimeMilliSec = 0.0;
 
@@ -52,22 +57,20 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
 //        spoutAregatedData.compHistoryResults.
 
         double avgCompleteHis = spoutAregatedData.compHistoryResults.entrySet().stream().mapToDouble(e -> {
-            Iterable<ComponentAggResult> results = e.getValue();
-            ComponentAggResult hisCar = ComponentAggResult.getCombinedResult(results,
-                    ComponentAggResult.ComponentType.SPOUT);
-            CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
+            Iterable<AggResult> results = e.getValue();
+            SpoutAggResult hisCar = AggResult.getCombinedResult(new SpoutAggResult(), results);
+            CntMeanVar hisCarCombined = hisCar.getCombinedCompletedLatency();
             return hisCarCombined.getAvg();
         }).average().getAsDouble();
         Map<String, ServiceNode> queueingNetwork = boltAregatedData.compHistoryResults.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> {
-                    Iterable<ComponentAggResult> results = e.getValue();
-                    ComponentAggResult hisCar = ComponentAggResult.getCombinedResult(results,
-                            ComponentAggResult.ComponentType.BOLT);
-                    CntMeanVar hisCarCombined = hisCar.getSimpleCombinedProcessedTuple();
+                    Iterable<AggResult> results = e.getValue();
+                    BoltAggResult hisCar = AggResult.getCombinedResult(new BoltAggResult(), results);
+                    CntMeanVar hisCarCombined = hisCar.getCombinedProcessedResult();
 
-                    double avgSendQLenHis = hisCar.sendQueueLen.getAvg();
-                    double avgRecvQLenHis = hisCar.recvQueueLen.getAvg();
-                    double arrivalRateHis = hisCar.recvArrivalCnt.getAvg() / updInterval;
+                    double avgSendQLenHis = hisCar.getSendQueueResult().getAvgQueueLength();
+                    double avgRecvQLenHis = hisCar.getRecvQueueResult().getAvgQueueLength();
+                    double arrivalRateHis = hisCar.getRecvQueueResult().getArrivalRatePerSec();
                     double avgServTimeHis = hisCarCombined.getAvg();
 
                     double rhoHis = arrivalRateHis * avgServTimeHis / 1000;
@@ -89,10 +92,10 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                     return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, 1);
                 }));
         int maxThreadAvailable4Bolt = maxAvailableExectors - currAllocation.entrySet().stream()
-                .filter(e -> topologyContext.getRawTopology().get_spouts().containsKey(e.getKey()))
+                .filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
                 .mapToInt(Map.Entry::getValue).sum();
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
-                .filter(e -> topologyContext.getRawTopology().get_bolts().containsKey(e.getKey()))
+                .filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, avgCompleteHis,
                 targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
@@ -101,4 +104,11 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         return optimizeDecision.currOptAllocation;
     }
 
+    @Override
+    public void allocationChanged(Map<String, Integer> newAllocation) {
+        super.allocationChanged(newAllocation);
+        spoutAregatedData.clear();
+        boltAregatedData.clear();
+        currHistory = 0;
+    }
 }

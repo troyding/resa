@@ -3,7 +3,6 @@ package resa.metrics;
 import backtype.storm.Config;
 import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
-import resa.optimize.MeasuredData;
 import resa.optimize.TopologyOptimizer;
 
 import java.util.*;
