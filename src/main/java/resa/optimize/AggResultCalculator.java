@@ -2,6 +2,7 @@ package resa.optimize;
 
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.ExecutorDetails;
+import org.apache.log4j.Logger;
 import resa.metrics.MeasuredData;
 import resa.metrics.MetricNames;
 
@@ -18,6 +19,8 @@ import java.util.stream.IntStream;
  * When calculate sum and average, need to adjust (sum - #message, average - 1) for accurate value.
  */
 class AggResultCalculator {
+
+    private static final Logger LOG = Logger.getLogger(AggResultCalculator.class);
 
     protected Iterable<MeasuredData> dataStream;
     private StormTopology rawTopo;
@@ -103,7 +106,7 @@ class AggResultCalculator {
     }
 
     public void calCMVStat() {
-
+        int count = 0;
         for (MeasuredData measuredData : dataStream) {
             ///Real example
             //69) "objectSpout:4->{\"receive\":{\"sampleCount\":209,\"totalQueueLen\":212,\"totalCount\":4170},\"complete-latency\":{\"default\":\"2086,60635.0,3382707.0\"},\"sendqueue\":{\"sampleCount\":420,\"totalQueueLen\":424,\"totalCount\":8402}}"
@@ -112,7 +115,9 @@ class AggResultCalculator {
             //73) "updater:9->{\"receive\":{\"sampleCount\":3921,\"totalQueueLen\":5495,\"totalCount\":78436},\"sendqueue\":{\"sampleCount\":4001,\"totalQueueLen\":4336,\"totalCount\":80002},\"execute\":{\"detector:default\":\"40000,1651.7782049999894,182.68124734051045\"}}"
             AggResult car = task2Result.get(measuredData.task);
             parse(measuredData, car);
+            count ++;
         }
+        LOG.debug("calCMVStat, processed measuredData size: " + count);
     }
 
     public Map<String, AggResult[]> getResults() {

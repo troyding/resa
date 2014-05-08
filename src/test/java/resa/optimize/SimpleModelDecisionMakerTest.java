@@ -10,6 +10,8 @@ import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
 import org.junit.Test;
 import resa.topology.RandomSentenceSpout;
 import resa.util.ResaConfig;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
  * Created by Tom.fu on 5/5/2014.
  */
 public class SimpleModelDecisionMakerTest {
+
     private TopologyBuilder builder = new TopologyBuilder();
     private Map<String, Object> conf = ResaConfig.create(true);
     private Map<Integer, String> t2c = new HashMap<>();
@@ -88,6 +91,7 @@ public class SimpleModelDecisionMakerTest {
         conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
 
         conf.put("resa.opt.smd.qos.ms", 1500.0);
+        conf.put("resa.opt.win.history.size", 3);
 
         GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc", conf);
 
@@ -103,22 +107,24 @@ public class SimpleModelDecisionMakerTest {
 
         String topoName = "ta1wc";
 
-        while (true) {
+        NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+        Nimbus.Client nimbus = nimbusClient.getClient();
+        String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
+        TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
 
-            NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
-            Nimbus.Client nimbus = nimbusClient.getClient();
-            String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
-            TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
-            Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
-                    .collect(Collectors.groupingBy(e -> e.get_component_id(),
-                            Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+        Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+                .collect(Collectors.groupingBy(e -> e.get_component_id(),
+                        Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
 
-            Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
-                    .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
+                .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-            SimpleModelDecisionMaker smdm = new SimpleModelDecisionMaker();
-            smdm.init(conf, currAllocation, gtc.getRawTopology());
+        SimpleModelDecisionMaker smdm = new SimpleModelDecisionMaker();
+        smdm.init(conf, currAllocation, gtc.getRawTopology());
+
+        for (int i = 0; i < 10000; i++) {
+            Utils.sleep(30000);
 
             AggResultCalculator resultCalculator = new AggResultCalculator(
                     RedisDataSource.readData(host, port, queue, maxLen), comp2Executors, gtc.getRawTopology());
@@ -127,7 +133,7 @@ public class SimpleModelDecisionMakerTest {
             System.out.println("-------------Report on: " + System.currentTimeMillis() + "------------------------------");
             System.out.println(smdm.make(resultCalculator.getResults(), 7));
 
-            Utils.sleep(30000);
+
         }
     }
 }

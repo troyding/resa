@@ -37,6 +37,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         // check history size. Ensure we have enough history data before we run the optimize function
         currHistory++;
         if (currHistory < historySize) {
+            LOG.info("currHistory < historySize, curr: " + currHistory + ", Size: " + historySize);
             return null;
         } else {
             currHistory = historySize;
@@ -69,18 +70,14 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
 
                     double lambdaHis = arrivalRateHis * currAllocation.get(e.getKey());
                     double muHis = 1000.0 / avgServTimeHis;
-                    double rhoHis = arrivalRateHis / muHis;
+                    double rhoHis = lambdaHis / muHis;
 
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
                     boolean recvQlenNormalHis = avgRecvQLenHis < recvQSizeThresh;
 
-                    LOG.info("avgSendQLenHis: " + avgSendQLenHis);
-                    LOG.info("avgRecvQLenHis: " + avgRecvQLenHis);
-                    LOG.info("arrivalRateHis: " + arrivalRateHis);
-                    LOG.info("avgServTimeHis (milliSec): " + avgServTimeHis);
-                    LOG.info("rhoHis: " + rhoHis);
-                    LOG.info("lambdaHis: " + lambdaHis);
-                    LOG.info("muHis: " + muHis);
+                    LOG.debug("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis + ", arrRateHis: "
+                            + arrivalRateHis + ", avgServTimeHis(ms): " + avgServTimeHis);
+                    LOG.debug("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis);
 
                     return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, 1);
                 }));
@@ -92,8 +89,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, avgCompleteHis,
                 targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
-        LOG.info("minReq: " + optimizeDecision.minReqOptAllocation);
-        LOG.info("status: " + optimizeDecision.status);
+        LOG.debug("minReq: " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
         return optimizeDecision.currOptAllocation;
     }
 

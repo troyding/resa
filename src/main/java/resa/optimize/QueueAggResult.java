@@ -61,6 +61,6 @@ public class QueueAggResult implements Cloneable {
 
     @Override
     public String toString() {
-        return String.format("arrivalCount: %d, duration: %d, totalQLength: %d, totalSamCount: %d, arrivalRatePerSec: %.5f", arrivalCount, duration, totalQueueLength, totalSampleCount, getArrivalRatePerSec());
+        return String.format("arrCount: %d, dur: %d, totalQLen: %d, totalSamCnt: %d, arrRatePerSec: %.5f", arrivalCount, duration, totalQueueLength, totalSampleCount, getArrivalRatePerSec());
     }
 }
