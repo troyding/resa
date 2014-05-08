@@ -8,7 +8,8 @@ import backtype.storm.generated.TopologyInfo;
 import backtype.storm.scheduler.ExecutorDetails;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.metrics.MeasuredData;
 import resa.util.ConfigUtil;
 import resa.util.TopologyHelper;
@@ -27,7 +28,7 @@ public class TopologyOptimizer {
         public Iterable<MeasuredData> retrieve();
     }
 
-    private static final Logger LOG = Logger.getLogger(TopologyOptimizer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TopologyOptimizer.class);
 
     private final Timer timer = new Timer(true);
     private Map<String, Integer> currAllocation;

@@ -10,11 +10,12 @@ import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import com.netflix.curator.framework.CuratorFramework;
-import org.apache.log4j.Logger;
 import org.apache.thrift7.TException;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 import resa.util.TopologyHelper;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
  */
 public class TopologyListener {
 
-    private static final Logger LOG = Logger.getLogger(TopologyListener.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TopologyListener.class);
 
     public static class AllocationContext {
         private long lastRequest;

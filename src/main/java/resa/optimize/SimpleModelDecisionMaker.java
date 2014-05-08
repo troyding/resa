@@ -2,10 +2,10 @@ package resa.optimize;
 
 import backtype.storm.Config;
 import backtype.storm.generated.StormTopology;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
  * Created by ding on 14-4-30.
  */
 public class SimpleModelDecisionMaker extends DecisionMaker {
-    private static final Logger LOG = Logger.getLogger(SimpleModelDecisionMaker.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleModelDecisionMaker.class);
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
     private int historySize;

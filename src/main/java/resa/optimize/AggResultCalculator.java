@@ -2,7 +2,8 @@ package resa.optimize;
 
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.ExecutorDetails;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.metrics.MeasuredData;
 import resa.metrics.MetricNames;
 
@@ -20,7 +21,7 @@ import java.util.stream.IntStream;
  */
 class AggResultCalculator {
 
-    private static final Logger LOG = Logger.getLogger(AggResultCalculator.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AggResultCalculator.class);
 
     protected Iterable<MeasuredData> dataStream;
     private StormTopology rawTopo;
@@ -115,7 +116,7 @@ class AggResultCalculator {
             //73) "updater:9->{\"receive\":{\"sampleCount\":3921,\"totalQueueLen\":5495,\"totalCount\":78436},\"sendqueue\":{\"sampleCount\":4001,\"totalQueueLen\":4336,\"totalCount\":80002},\"execute\":{\"detector:default\":\"40000,1651.7782049999894,182.68124734051045\"}}"
             AggResult car = task2Result.get(measuredData.task);
             parse(measuredData, car);
-            count ++;
+            count++;
         }
         LOG.debug("calCMVStat, processed measuredData size: " + count);
     }
