@@ -76,7 +76,7 @@ public class SimpleServiceModelAnalyzer {
         if (allocation == null) {
             LOG.warn("Null allocation input -> system is unstable.");
         } else {
-            LOG.info("allocation->" + allocation);
+            LOG.debug("allocation->" + allocation);
         }
     }
 
@@ -113,7 +113,7 @@ public class SimpleServiceModelAnalyzer {
                     }
                 }
                 int newAllocate = retVal.compute(maxDiffCid, (k, count) -> count + 1);
-                LOG.info((i + 1) + " of " + remainCount + ", assigned to " + maxDiffCid + ", newAllocate: "
+                LOG.debug((i + 1) + " of " + remainCount + ", assigned to " + maxDiffCid + ", newAllocate: "
                         + newAllocate);
             }
         } else {
@@ -153,6 +153,11 @@ public class SimpleServiceModelAnalyzer {
             do {
                 currAllocation = suggestAllocation(components, totalMinReq);
                 currTime = getErlangChainTopCompleteTime(components, currAllocation) * adjRatio;
+
+                LOG.debug("getMinReqServerAllocation: "+maxAllowedCompleteTime*1000.0+", currTime(ms): "
+                        + currTime * 1000.0 /adjRatio + ", currAdj(ms): "
+                        + currTime*1000.0 + ", totalMinReq: " + totalMinReq);
+
                 totalMinReq++;
             } while (currTime > maxAllowedCompleteTime);
         }
@@ -183,6 +188,7 @@ public class SimpleServiceModelAnalyzer {
 
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
+        LOG.debug("estLatency(ms): " + estimatedLatencyMilliSec + ", realLatency(ms)" + realLatencyMilliSec + ", underEstRatio: " + underEstimateRatio);
         Map<String, Integer> minReqAllocation = getMinReqServerAllocation(queueingNetwork, targetQoSMilliSec / 1000.0,
                 underEstimateRatio);
         OptimizeDecision.Status status = OptimizeDecision.Status.FEASIBALE;
