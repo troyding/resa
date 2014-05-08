@@ -1,20 +1,22 @@
 package resa.optimize;
 
 import backtype.storm.Config;
+import backtype.storm.generated.Nimbus;
+import backtype.storm.generated.TopologyInfo;
 import backtype.storm.scheduler.ExecutorDetails;
 import backtype.storm.task.GeneralTopologyContext;
 import backtype.storm.topology.IRichBolt;
 import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.utils.NimbusClient;
+import backtype.storm.utils.Utils;
 import org.junit.Test;
 import resa.topology.RandomSentenceSpout;
 import resa.util.ResaConfig;
 import resa.util.TopologyHelper;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by Tom.fu on 5/5/2014.
@@ -82,9 +84,10 @@ public class SimpleModelDecisionMakerTest {
     @Test
     public void testMakeUsingTopologyHelper() throws Exception {
 
-
         conf.put(Config.NIMBUS_HOST, "192.168.0.31");
         conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
+
+        conf.put("resa.opt.smd.qos.ms", 1500.0);
 
         GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc", conf);
 
@@ -93,24 +96,38 @@ public class SimpleModelDecisionMakerTest {
             return;
         }
 
-        Map<String, Integer> currAllocation = new HashMap<>();
-        currAllocation.put("counter", 2);
-        currAllocation.put("split", 4);
-        currAllocation.put("sentenceSpout", 1);
-
-        SimpleModelDecisionMaker smdm = new SimpleModelDecisionMaker();
-        smdm.init(conf, currAllocation, gtc.getRawTopology());
-
         String host = "192.168.0.31";
         int port = 6379;
         String queue = "ta1wc";
-        int maxLen = 50;
+        int maxLen = 500;
 
-        Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors("ta1wc", conf);
-        AggResultCalculator resultCalculator = new AggResultCalculator(
-                RedisDataSource.readData(host, port, queue, maxLen), comp2Executors, builder.createTopology());
-        resultCalculator.calCMVStat();
-        System.out.println(smdm.make(resultCalculator.getResults(), 6));
+        String topoName = "ta1wc";
 
+        while (true) {
+
+            NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+            Nimbus.Client nimbus = nimbusClient.getClient();
+            String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
+            TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
+            Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+                    .collect(Collectors.groupingBy(e -> e.get_component_id(),
+                            Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+
+            Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
+                    .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            SimpleModelDecisionMaker smdm = new SimpleModelDecisionMaker();
+            smdm.init(conf, currAllocation, gtc.getRawTopology());
+
+            AggResultCalculator resultCalculator = new AggResultCalculator(
+                    RedisDataSource.readData(host, port, queue, maxLen), comp2Executors, gtc.getRawTopology());
+            resultCalculator.calCMVStat();
+
+            System.out.println("-------------Report on: " + System.currentTimeMillis() + "------------------------------");
+            System.out.println(smdm.make(resultCalculator.getResults(), 7));
+
+            Utils.sleep(30000);
+        }
     }
 }

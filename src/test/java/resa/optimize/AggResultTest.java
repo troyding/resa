@@ -2,13 +2,32 @@ package resa.optimize;
 
 import org.junit.Test;
 
+import java.util.*;
+
 public class AggResultTest {
 
-    private AggResult aggResult = new AggResult(AggResult.ComponentType.BOLT);
+    private AggResult aggResult = new AggResult();
 
     @Test
-    public void testGetSimpleCombinedProcessedTuple() throws Exception {
-        CntMeanVar cmv = aggResult.getSimpleCombinedProcessedTuple();
-        System.out.println(cmv);
+    public void testGetCombinedResult() throws Exception {
+
+        AggResult srcAggResult = new AggResult();
+        srcAggResult.recvQueueResult.add(1, 10, 1, 1);
+        srcAggResult.sendQueueResult.add(2, 20, 2, 2);
+
+        List<AggResult> aggResultList = new ArrayList<>();
+        aggResultList.add(srcAggResult);
+
+        srcAggResult = new AggResult();
+        srcAggResult.recvQueueResult.add(1, 10, 1, 1);
+        srcAggResult.sendQueueResult.add(2, 20, 2, 2);
+
+        aggResultList.add(srcAggResult);
+
+        AggResult.getCombinedResult(aggResult, aggResultList);
+
+        System.out.println(aggResult.getRecvQueueResult().toString());
+        System.out.println(aggResult.getSendQueueResult().toString());
+
     }
 }

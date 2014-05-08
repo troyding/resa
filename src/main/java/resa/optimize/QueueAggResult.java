@@ -58,4 +58,9 @@ public class QueueAggResult implements Cloneable {
         this.totalQueueLength += totalQueueLength;
         this.totalSampleCount += totalSampleCount;
     }
+
+    @Override
+    public String toString() {
+        return String.format("arrivalCount: %d, duration: %d, totalQLength: %d, totalSamCount: %d, arrivalRatePerSec: %.5f", arrivalCount, duration, totalQueueLength, totalSampleCount, getArrivalRatePerSec());
+    }
 }

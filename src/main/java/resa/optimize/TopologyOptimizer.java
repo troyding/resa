@@ -79,7 +79,9 @@ public class TopologyOptimizer {
         public void run() {
             Iterable<MeasuredData> data = measuredSource.retrieve();
             // get current ExecutorDetails from nimbus
-            Map<String, List<ExecutorDetails>> topoExecutors = TopologyHelper.getTopologyExecutors(nimbus, topologyId);
+            Map<String, List<ExecutorDetails>> topoExecutors = TopologyHelper.getTopologyExecutors(nimbus, topologyId)
+                    .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             // topoExecutors == null means nimbus temporarily unreachable or this topology has been killed
             Map<String, Integer> allc = topoExecutors != null ? calcAllocation(topoExecutors) : null;
             if (allc != null && !allc.equals(currAllocation)) {
