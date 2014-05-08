@@ -52,10 +52,10 @@ public class QueueAggResult implements Cloneable {
         totalSampleCount += result.totalSampleCount;
     }
 
-    public void add(long arrivalCount, long duration, long totalQueueLenth, int totalSampleCount) {
+    public void add(long arrivalCount, long duration, long totalQueueLength, int totalSampleCount) {
         this.arrivalCount += arrivalCount;
         this.duration += duration;
-        this.totalQueueLength += totalQueueLenth;
+        this.totalQueueLength += totalQueueLength;
         this.totalSampleCount += totalSampleCount;
     }
 }

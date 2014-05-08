@@ -97,7 +97,7 @@ class AggResultCalculator {
         if (totalArrivalCnt > 0) {
             int sampleCnt = queueMetrics.getOrDefault("sampleCount", Integer.valueOf(0)).intValue();
             long totalQLen = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
-            long duration = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
+            long duration = queueMetrics.getOrDefault("duration", Integer.valueOf(0)).longValue();
             queueResult.add(totalArrivalCnt, duration, totalQLen, sampleCnt);
         }
     }
