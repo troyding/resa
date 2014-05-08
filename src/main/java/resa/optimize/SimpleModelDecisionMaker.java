@@ -29,7 +29,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
     }
 
     @Override
-    public Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors) {
+    public Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
                 .forEach(e -> spoutAregatedData.putResult(e.getKey(), e.getValue()));
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
@@ -50,12 +50,6 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         double recvQSizeThreshRatio = ConfigUtil.getDouble(conf, "resa.opt.smd.rq.thresh.ratio", 0.6);
         double recvQSizeThresh = recvQSizeThreshRatio * maxRecvQSize;
 
-        double mesuredCompleteTimeMilliSec = 0.0;
-
-        Map<String, ServiceNode> components = new HashMap<>();
-
-//        spoutAregatedData.compHistoryResults.
-
         double avgCompleteHis = spoutAregatedData.compHistoryResults.entrySet().stream().mapToDouble(e -> {
             Iterable<AggResult> results = e.getValue();
             SpoutAggResult hisCar = AggResult.getCombinedResult(new SpoutAggResult(), results);
@@ -71,12 +65,11 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                     double avgSendQLenHis = hisCar.getSendQueueResult().getAvgQueueLength();
                     double avgRecvQLenHis = hisCar.getRecvQueueResult().getAvgQueueLength();
                     double arrivalRateHis = hisCar.getRecvQueueResult().getArrivalRatePerSec();
-                    double avgServTimeHis = hisCarCombined.getAvg();
-
-                    double rhoHis = arrivalRateHis * avgServTimeHis / 1000;
+                    double avgServTimeHis = hisCarCombined.getAvg();///unit is millisecond
 
                     double lambdaHis = arrivalRateHis * currAllocation.get(e.getKey());
                     double muHis = 1000.0 / avgServTimeHis;
+                    double rhoHis = arrivalRateHis / muHis;
 
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
                     boolean recvQlenNormalHis = avgRecvQLenHis < recvQSizeThresh;
@@ -84,14 +77,14 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                     LOG.info("avgSendQLenHis: " + avgSendQLenHis);
                     LOG.info("avgRecvQLenHis: " + avgRecvQLenHis);
                     LOG.info("arrivalRateHis: " + arrivalRateHis);
-                    LOG.info("avgServTimeHis: " + avgServTimeHis);
+                    LOG.info("avgServTimeHis (milliSec): " + avgServTimeHis);
                     LOG.info("rhoHis: " + rhoHis);
                     LOG.info("lambdaHis: " + lambdaHis);
                     LOG.info("muHis: " + muHis);
 
                     return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, 1);
                 }));
-        int maxThreadAvailable4Bolt = maxAvailableExectors - currAllocation.entrySet().stream()
+        int maxThreadAvailable4Bolt = maxAvailableExecutors - currAllocation.entrySet().stream()
                 .filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
                 .mapToInt(Map.Entry::getValue).sum();
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
