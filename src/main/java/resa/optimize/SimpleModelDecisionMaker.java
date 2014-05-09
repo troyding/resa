@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -89,8 +90,11 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, avgCompleteHis,
                 targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
-        LOG.debug("minReq: " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
-        return optimizeDecision.currOptAllocation;
+        LOG.debug("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
+        Map<String, Integer> ret = new HashMap<>(currAllocation);
+        // merge the optimized decision into source allocation
+        ret.putAll(optimizeDecision.currOptAllocation);
+        return ret;
     }
 
     @Override
