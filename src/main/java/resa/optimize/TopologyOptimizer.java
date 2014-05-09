@@ -97,6 +97,8 @@ public class TopologyOptimizer {
                 Map<String, Integer> newAllocation = calcNewAllocation(calculator.getResults());
                 if (newAllocation != null && !newAllocation.equals(currAllocation)) {
                     LOG.info("Detected topology allocation changed, request rebalance....");
+                    LOG.info("Old allc is " + currAllocation);
+                    LOG.info("new allc is " + newAllocation);
                     requestRebalance(newAllocation);
                 }
             }
