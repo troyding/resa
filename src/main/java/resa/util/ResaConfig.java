@@ -2,7 +2,7 @@ package resa.util;
 
 import backtype.storm.Config;
 import backtype.storm.utils.Utils;
-import resa.optimize.TopologyOptimizer;
+import resa.metrics.ResaMetricsCollector;
 
 import java.util.Map;
 
@@ -61,6 +61,6 @@ public class ResaConfig extends Config {
     }
 
     public void addOptimizeSupport() {
-        registerMetricsConsumer(TopologyOptimizer.class, 1);
+        registerMetricsConsumer(ResaMetricsCollector.class, 1);
     }
 }
