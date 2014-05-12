@@ -20,5 +20,8 @@
 * [Topology Submission - Client](http://www.cnblogs.com/fxjwind/archive/2013/06/05/3119056.html)
 * [Topology Submission - Nimbus](http://www.cnblogs.com/fxjwind/p/3144256.html)
 
+##third week: conception
+* [Scheduler](http://www.cnblogs.com/fxjwind/archive/2013/06/14/3136008.html)
+
 ##Supplementary material
 * [徽沪一郎 Blog - Apache Storm 源码走读系列](http://www.cnblogs.com/hseagle/category/519033.html)
