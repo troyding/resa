@@ -3,12 +3,17 @@ package resa.metrics;
 import backtype.storm.metric.api.IMetricsConsumer;
 import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
-import org.json.simple.JSONValue;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Write metrics to redis server.
@@ -37,6 +42,8 @@ public class RedisMetricsCollector extends FilteredMetricsCollector {
     private String jedisHost;
     private int jedisPort;
     private String queueName;
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void prepare(Map stormConf, Object registrationArgument, TopologyContext context,
@@ -93,17 +100,19 @@ public class RedisMetricsCollector extends FilteredMetricsCollector {
 
     protected List<QueueElement> dataPoints2QueueElement(IMetricsConsumer.TaskInfo taskInfo,
                                                          Collection<IMetricsConsumer.DataPoint> dataPoints) {
-        //data format is "[srcComponentId-taskId]:timestamp:data point json"
-        StringBuilder sb = new StringBuilder();
-        sb.append('[').append(taskInfo.srcComponentId).append('-').append(taskInfo.srcTaskId).append("]:");
-        sb.append(taskInfo.timestamp).append(':');
-        //convert data points to json string
-        Map<String, Object> metrics = new HashMap<String, Object>((int) (dataPoints.size() / 0.75f) + 1, 0.75f);
-        for (IMetricsConsumer.DataPoint dataPoint : dataPoints) {
-            metrics.put(dataPoint.name, dataPoint.value);
+        Map<String, Object> ret = dataPoints.stream().collect(Collectors.toMap(p -> p.name, p -> p.value));
+        //data format is "srcComponentId:taskId:timestamp->data point json"
+        String data = taskInfo.srcComponentId + ':' + taskInfo.srcTaskId + ':' + taskInfo.timestamp
+                + "->" + object2Json(ret);
+        return Arrays.asList(createDefaultQueueElement(data));
+    }
+
+    private String object2Json(Object o) {
+        try {
+            return objectMapper.writeValueAsString(o);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        sb.append(JSONValue.toJSONString(metrics));
-        return Collections.singletonList(new QueueElement(queueName, sb.toString()));
     }
 
     protected QueueElement createDefaultQueueElement(String data) {
