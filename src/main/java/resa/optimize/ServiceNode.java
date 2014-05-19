@@ -156,7 +156,7 @@ public class ServiceNode {
             return estT;
 
         } else {
-            System.out.println("Service is not stable!!!");
+            //System.out.println("Service is not stable!!!");
             return Double.MAX_VALUE;
         }
     }

@@ -5,9 +5,7 @@ import backtype.storm.task.IErrorReporter;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.utils.Utils;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -17,9 +15,39 @@ import java.util.stream.Collectors;
  */
 public abstract class FilteredMetricsCollector implements IMetricsConsumer {
 
+    public static final String APPROVED_METRIC_NAMES = "resa.metric.approved.names";
+
+    private final Map<String, String> approvedMetricNames = new HashMap<>();
+
     @Override
     public void prepare(Map stormConf, Object arg, TopologyContext context, IErrorReporter errorReporter) {
+        List<String> metricNames = (List<String>) stormConf.get(APPROVED_METRIC_NAMES);
+        if (metricNames != null) {
+            metricNames.stream().forEach((line) -> {
+                line = line.trim();
+                if (line.isEmpty()) {
+                    return;
+                }
+                String[] tmp = line.split("\\s+");
+                if (tmp.length == 1) {
+                    addApprovedMetirc(tmp[0]);
+                } else {
+                    addApprovedMetirc(tmp[0], tmp[1]);
+                }
+            });
+        }
+    }
 
+    public void addApprovedMetirc(String metricName, String alias) {
+        approvedMetricNames.put(metricName, alias);
+    }
+
+    public void addApprovedMetirc(String metricName) {
+        addApprovedMetirc(metricName, metricName);
+    }
+
+    public void removeApprovedMetirc(String metricName) {
+        approvedMetricNames.remove(metricName);
     }
 
     @Override
@@ -29,8 +57,8 @@ public abstract class FilteredMetricsCollector implements IMetricsConsumer {
             return;
         }
         // select points that need to keep based on the implementation of keepPoint function
-        List<DataPoint> selectedPoints = dataPoints.stream().filter(dataPoint -> keepPoint(taskInfo, dataPoint))
-                .collect(Collectors.toList());
+        List<DataPoint> selectedPoints = dataPoints.stream().map(dataPoint -> processPoint(taskInfo, dataPoint))
+                .filter(Objects::nonNull).collect(Collectors.toList());
         if (!selectedPoints.isEmpty()) {
             handleSelectedDataPoints(taskInfo, selectedPoints);
         }
@@ -46,6 +74,11 @@ public abstract class FilteredMetricsCollector implements IMetricsConsumer {
     protected boolean keepTask(TaskInfo taskInfo) {
         //ignore system component
         return Utils.isSystemId(taskInfo.srcComponentId);
+    }
+
+    private DataPoint processPoint(TaskInfo taskInfo, DataPoint dataPoint) {
+        String alias = approvedMetricNames.get(dataPoint.name);
+        return alias != null && keepPoint(taskInfo, dataPoint) ? new DataPoint(alias, dataPoint.value) : null;
     }
 
     /**

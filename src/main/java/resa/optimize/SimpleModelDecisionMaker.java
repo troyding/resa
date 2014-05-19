@@ -71,6 +71,8 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
 
                     double lambdaHis = arrivalRateHis * currAllocation.get(e.getKey());
                     double muHis = 1000.0 / avgServTimeHis;
+                    //TODO: when processed tuple count is very small (e.g. there is no input tuple),
+                    // avgServTime becomes zero and mu becomes infinity, this will cause problematic SN.
                     double rhoHis = lambdaHis / muHis;
 
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;

@@ -13,16 +13,6 @@ import java.util.stream.Collectors;
  */
 public class ResaMetricsCollector extends FilteredMetricsCollector {
 
-    private static final Map<String, String> METRICS_NAME_MAPPING = new HashMap<>();
-
-    static {
-        // add metric name mapping here
-        METRICS_NAME_MAPPING.put("__sendqueue", MetricNames.SEND_QUEUE);
-        METRICS_NAME_MAPPING.put("__receive", MetricNames.RECV_QUEUE);
-        METRICS_NAME_MAPPING.put("complete-latency", MetricNames.COMPLETE_LATENCY);
-        METRICS_NAME_MAPPING.put("execute", MetricNames.TASK_EXECUTE);
-    }
-
     private int bufferSize = 100;
     private volatile List<MeasuredData> measureBuffer;
     private TopologyOptimizer topologyOptimizer = new TopologyOptimizer();
@@ -30,6 +20,13 @@ public class ResaMetricsCollector extends FilteredMetricsCollector {
     @Override
     public void prepare(Map conf, Object arg, TopologyContext context, IErrorReporter errorReporter) {
         super.prepare(conf, arg, context, errorReporter);
+        // add approved metric name
+        addApprovedMetirc("__sendqueue", MetricNames.SEND_QUEUE);
+        addApprovedMetirc("__receive", MetricNames.RECV_QUEUE);
+        addApprovedMetirc(MetricNames.COMPLETE_LATENCY);
+        addApprovedMetirc(MetricNames.TASK_EXECUTE);
+        addApprovedMetirc(MetricNames.EMIT_COUNT);
+
         measureBuffer = new ArrayList<>(bufferSize);
         topologyOptimizer.init((String) conf.get(Config.TOPOLOGY_NAME), conf, this::getCachedDataAndClearBuffer);
         topologyOptimizer.start();
@@ -42,14 +39,8 @@ public class ResaMetricsCollector extends FilteredMetricsCollector {
     }
 
     @Override
-    protected boolean keepPoint(TaskInfo taskInfo, DataPoint dataPoint) {
-        return METRICS_NAME_MAPPING.containsKey(dataPoint.name) && super.keepPoint(taskInfo, dataPoint);
-    }
-
-    @Override
     protected void handleSelectedDataPoints(TaskInfo taskInfo, Collection<DataPoint> dataPoints) {
-        Map<String, Object> ret = dataPoints.stream().collect(
-                Collectors.toMap(p -> METRICS_NAME_MAPPING.get(p.name), p -> p.value));
+        Map<String, Object> ret = dataPoints.stream().collect(Collectors.toMap(p -> p.name, p -> p.value));
         //add to cache
         measureBuffer.add(new MeasuredData(taskInfo.srcComponentId, taskInfo.srcTaskId, taskInfo.timestamp, ret));
     }

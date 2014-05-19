@@ -2,7 +2,7 @@ package resa.metrics;
 
 /**
  * Define all the metrics collected by resa
- * <p/>
+ * <p>
  * Created by ding on 14-4-26.
  */
 public class MetricNames {
@@ -14,5 +14,7 @@ public class MetricNames {
     public static final String SEND_QUEUE = "send-queue";
 
     public static final String RECV_QUEUE = "recv-queue";
+
+    public static final String EMIT_COUNT = "emit";
 
 }

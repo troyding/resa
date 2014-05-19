@@ -1,0 +1,22 @@
+#####resa config example########
+
+### metrics
+resa.comp.sample.rate: 0.05
+
+resa.metric.redis.host: localhost
+resa.metric.redis.port: 6607
+resa.metric.redis.queue-name: metrics;
+resa.metric.approved.names:
+  - "complete-latency"
+  - "execute"
+  - "__sendqueue send-queue"
+  - "__receive recv-queue"
+  - "emit"
+
+### optimize scheduler
+resa.topology.max.executor.per.worker: 5
+resa.topology.rebalance.waiting.secs: 30
+resa.optimize.interval.secs: 30
+resa.optimize.analyzer.class: resa.optimize.SimpleModelDecisionMaker
+
+
