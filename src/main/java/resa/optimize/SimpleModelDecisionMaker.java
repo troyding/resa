@@ -78,9 +78,9 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
                     boolean recvQlenNormalHis = avgRecvQLenHis < recvQSizeThresh;
 
-                    LOG.debug("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis + ", arrRateHis: "
+                    LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis + ", arrRateHis: "
                             + arrivalRateHis + ", avgServTimeHis(ms): " + avgServTimeHis);
-                    LOG.debug("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis);
+                    LOG.info("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis);
 
                     return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, 1);
                 }));
