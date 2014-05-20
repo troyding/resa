@@ -90,11 +90,11 @@ public class SimpleServiceModelAnalyzer {
     public static Map<String, Integer> suggestAllocation(Map<String, ServiceNode> components, int totalResourceCount) {
         Map<String, Integer> retVal = components.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
                 e -> e.getValue().getMinReqServerCount()));
-        int totalMinReq = retVal.values().stream().mapToInt(Integer::intValue).sum();
+        int topMinReq = retVal.values().stream().mapToInt(Integer::intValue).sum();
 
-        LOG.info("totalResourceCount: " + totalResourceCount + ", totalMinReq: " + totalMinReq);
-        if (totalMinReq <= totalResourceCount) {
-            int remainCount = totalResourceCount - totalMinReq;
+        LOG.info("totalResourceCount: " + totalResourceCount + ", topMinReq: " + topMinReq);
+        if (topMinReq <= totalResourceCount) {
+            int remainCount = totalResourceCount - topMinReq;
             for (int i = 0; i < remainCount; i++) {
                 double maxDiff = Double.MIN_VALUE;
                 String maxDiffCid = null;
@@ -155,9 +155,9 @@ public class SimpleServiceModelAnalyzer {
                 currAllocation = suggestAllocation(components, totalMinReq);
                 currTime = getErlangChainTopCompleteTime(components, currAllocation) * adjRatio;
 
-                LOG.info("getMinReqServerAllocation: "+maxAllowedCompleteTime*1000.0+", currTime(ms): "
+                LOG.info("getMinReqServAllcQoS: "+maxAllowedCompleteTime*1000.0+", currTime(ms): "
                         + currTime * 1000.0 /adjRatio + ", currAdj(ms): "
-                        + currTime*1000.0 + ", totalMinReq: " + totalMinReq);
+                        + currTime*1000.0 + ", totalMinReqQoS: " + totalMinReq);
 
                 totalMinReq++;
             } while (currTime > maxAllowedCompleteTime);
@@ -190,12 +190,14 @@ public class SimpleServiceModelAnalyzer {
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
         LOG.info("estLatency(ms): " + estimatedLatencyMilliSec + ", realLatency(ms)" + realLatencyMilliSec + ", underEstRatio: " + underEstimateRatio);
+        LOG.info("Find out minReqAllocation under QoS requirement.");
         Map<String, Integer> minReqAllocation = getMinReqServerAllocation(queueingNetwork, targetQoSMilliSec / 1000.0,
                 underEstimateRatio);
         OptimizeDecision.Status status = OptimizeDecision.Status.FEASIBALE;
         if (minReqAllocation == null) {
             status = OptimizeDecision.Status.INFEASIBLE;
         }
+        LOG.info("Find out best allocation given available executors.");
         Map<String, Integer> after = suggestAllocation(queueingNetwork, maxAvailable4Bolt);
         return new OptimizeDecision(status, minReqAllocation, after);
     }
