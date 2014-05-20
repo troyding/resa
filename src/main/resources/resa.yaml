@@ -18,5 +18,6 @@ resa.topology.max.executor.per.worker: 5
 resa.topology.rebalance.waiting.secs: 30
 resa.optimize.interval.secs: 30
 resa.optimize.analyzer.class: resa.optimize.SimpleModelDecisionMaker
+resa.topology.allowed.executor.num: -1
 
 

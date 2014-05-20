@@ -33,6 +33,7 @@ public class TopologyOptimizer {
     private final Timer timer = new Timer(true);
     private Map<String, Integer> currAllocation;
     private int maxExecutorsPerWorker;
+    private int topologyMaxExecutors;
     private int rebalanceWaitingSecs;
     private Nimbus.Client nimbus;
     private String topologyName;
@@ -47,6 +48,7 @@ public class TopologyOptimizer {
         this.topologyName = topologyName;
         this.measuredSource = measuredSource;
         maxExecutorsPerWorker = ConfigUtil.getInt(conf, MAX_EXECUTORS_PER_WORKER, 10);
+        topologyMaxExecutors = ConfigUtil.getInt(conf, ALLOWED_EXECUTOR_NUM, -1);
         rebalanceWaitingSecs = ConfigUtil.getInt(conf, REBALANCE_WAITING_SECS, -1);
         // connected to nimbus
         nimbus = NimbusClient.getConfiguredClient(conf).getClient();
@@ -115,8 +117,8 @@ public class TopologyOptimizer {
         }
 
         private Map<String, Integer> calcNewAllocation(Map<String, AggResult[]> data) {
-            int maxExecutors = Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 1),
-                    getNumWorkers(currAllocation)) * maxExecutorsPerWorker;
+            int maxExecutors = topologyMaxExecutors == -1 ? Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 1),
+                    getNumWorkers(currAllocation)) * maxExecutorsPerWorker : topologyMaxExecutors;
             Map<String, Integer> decision = null;
             try {
                 decision = decisionMaker.make(data, maxExecutors);

@@ -23,6 +23,8 @@ public class ResaConfig extends Config {
 
     public static final String REBALANCE_WAITING_SECS = "resa.topology.rebalance.waiting.secs";
 
+    public static final String ALLOWED_EXECUTOR_NUM = "resa.topology.allowed.executor.num";
+
     public static final String OPTIMIZE_INTERVAL = "resa.optimize.interval.secs";
 
     public static final String ANALYZER_CLASS = "resa.optimize.analyzer.class";
