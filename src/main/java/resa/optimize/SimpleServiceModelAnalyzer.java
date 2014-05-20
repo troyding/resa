@@ -92,6 +92,7 @@ public class SimpleServiceModelAnalyzer {
                 e -> e.getValue().getMinReqServerCount()));
         int totalMinReq = retVal.values().stream().mapToInt(Integer::intValue).sum();
 
+        LOG.info("totalResourceCount: " + totalResourceCount + ", totalMinReq: " + totalMinReq);
         if (totalMinReq <= totalResourceCount) {
             int remainCount = totalResourceCount - totalMinReq;
             for (int i = 0; i < remainCount; i++) {
