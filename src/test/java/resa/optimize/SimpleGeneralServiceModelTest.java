@@ -23,7 +23,7 @@ public class SimpleGeneralServiceModelTest {
         para.put("counter", 2);
 
         Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
-        double ret = SimpleGeneralServiceModel.getErlangChainTopCompleteTime(components, allo);
+        double ret = SimpleGeneralServiceModel.getErlangGeneralTopCompleteTime(components, allo);
 
         System.out.println(ret);
     }
@@ -40,7 +40,7 @@ public class SimpleGeneralServiceModelTest {
         para.put("counter", 2);
 
         Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
-        double ret = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components, allo);
+        double ret = SimpleGeneralServiceModel.getErlangGeneralTopCompleteTime(components, allo);
 
         System.out.println(ret);
     }
@@ -166,7 +166,7 @@ public class SimpleGeneralServiceModelTest {
 
         OptimizeDecision ret = SimpleGeneralServiceModel.checkOptimized(components, 765.9786516853933, 1500, currBoltAllocation, maxAvailable4Bolt);
 
-        double estimatedLatencyMilliSec = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components, currBoltAllocation);
+        double estimatedLatencyMilliSec = SimpleGeneralServiceModel.getErlangGeneralTopCompleteTime(components, currBoltAllocation);
         double realLatencyMilliSec = ConfigUtil.getDouble(conf, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
 
@@ -181,9 +181,9 @@ public class SimpleGeneralServiceModelTest {
                 underEstimateRatio);
         int minReqTotalServerCount = minReqAllocation == null ? Integer.MAX_VALUE :
                 SimpleGeneralServiceModel.totalServerCountInvolved(minReqAllocation);
-        double minReqQoSMilliSec = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components,
+        double minReqQoSMilliSec = SimpleGeneralServiceModel.getErlangGeneralTopCompleteTime(components,
                 minReqAllocation);
-        double adjMinReqQoSMilliSec = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components, minReqAllocation) *
+        double adjMinReqQoSMilliSec = SimpleGeneralServiceModel.getErlangGeneralTopCompleteTime(components, minReqAllocation) *
                 underEstimateRatio;
 
         System.out.println(currBoltAllocation);
