@@ -10,6 +10,7 @@ import resa.util.ResaConfig;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,8 +37,8 @@ public class TAExpServWC2Redis {
         int numWorkers = ConfigUtil.getInt(conf, "a1-worker.count", 1);
         int numAckers = ConfigUtil.getInt(conf, "a1-acker.count", 1);
 
-        conf.setNumWorkers(numWorkers);
-        conf.setNumAckers(numAckers);
+        resaConfig.setNumWorkers(numWorkers);
+        resaConfig.setNumAckers(numAckers);
 
         String host = (String) conf.get("redis.host");
         int port = ConfigUtil.getInt(conf, "redis.port", 6379);
@@ -54,15 +55,16 @@ public class TAExpServWC2Redis {
         builder.setBolt("counter", new TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu)),
                 ConfigUtil.getInt(conf, "a1-counter.parallelism", 1)).setNumTasks(10).shuffleGrouping("split");
 
-        Map<String, Object> consumerArgs = new HashMap<>();
-        consumerArgs.put(RedisMetricsCollector.REDIS_HOST, host);
-        consumerArgs.put(RedisMetricsCollector.REDIS_PORT, port);
-        consumerArgs.put(FilteredMetricsCollector.APPROVED_METRIC_NAMES, Arrays.asList("tuple-completed", "execute", "__sendqueue", "__receive"));
-        String queueName = (String) conf.get("a1-metrics.output.queue-name");
-        if (queueName != null) {
-            consumerArgs.put(RedisMetricsCollector.REDIS_QUEUE_NAME, queueName);
-        }
-        conf.registerMetricsConsumer(RedisMetricsCollector.class, consumerArgs, 1);
+        ///Map<String, Object> consumerArgs = new HashMap<>();
+        ///consumerArgs.put(RedisMetricsCollector.REDIS_HOST, host);
+        ///consumerArgs.put(RedisMetricsCollector.REDIS_PORT, port);
+        ///consumerArgs.put(FilteredMetricsCollector.APPROVED_METRIC_NAMES, Arrays.asList("complete-latency", "execute", "__sendqueue", "__receive", "duration"));
+        ///String queueName = (String) conf.get("a1-metrics.output.queue-name");
+        ///if (queueName != null) {
+        ///    consumerArgs.put(RedisMetricsCollector.REDIS_QUEUE_NAME, queueName);
+        ///}
+
+        resaConfig.registerMetricsConsumer(RedisMetricsCollector.class, null, 1);
 
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
