@@ -31,8 +31,8 @@ public class TAExpServWC {
         int numWorkers = ConfigUtil.getInt(conf, "a1-worker.count", 1);
         int numAckers = ConfigUtil.getInt(conf, "a1-acker.count", 1);
 
-        conf.setNumWorkers(numWorkers);
-        conf.setNumAckers(numAckers);
+        resaConfig.setNumWorkers(numWorkers);
+        resaConfig.setNumAckers(numAckers);
 
         String host = (String) conf.get("redis.host");
         int port = ConfigUtil.getInt(conf, "redis.port", 6379);
