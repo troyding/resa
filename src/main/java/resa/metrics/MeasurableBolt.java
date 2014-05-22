@@ -56,6 +56,7 @@ public class MeasurableBolt implements IRichBolt {
     private Sampler sampler;
     private transient MultiCountMetric emitMetric;
     private transient MeasurableOutputCollector measurableCollector;
+    private long lastMetricsSent;
 
     public MeasurableBolt(IRichBolt delegate) {
         this.delegate = delegate;
@@ -66,9 +67,18 @@ public class MeasurableBolt implements IRichBolt {
         int interval = Utils.getInt(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
         executeMetric = context.registerMetric(MetricNames.TASK_EXECUTE, new CMVMetric(), interval);
         emitMetric = context.registerMetric(MetricNames.EMIT_COUNT, new MultiCountMetric(), interval);
+        lastMetricsSent = System.currentTimeMillis();
+        context.registerMetric(MetricNames.DURATION, this::getMetricsDuration, interval);
         sampler = new Sampler(ConfigUtil.getDouble(conf, ResaConfig.COMP_SAMPLE_RATE, 0.05));
         measurableCollector = new MeasurableOutputCollector(outputCollector);
         delegate.prepare(conf, context, measurableCollector);
+    }
+
+    private long getMetricsDuration() {
+        long now = System.currentTimeMillis();
+        long duration = now - lastMetricsSent;
+        lastMetricsSent = now;
+        return duration;
     }
 
     @Override

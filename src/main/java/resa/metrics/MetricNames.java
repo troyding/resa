@@ -11,6 +11,8 @@ public class MetricNames {
 
     public static final String TASK_EXECUTE = "execute";
 
+    public static final String DURATION = "duration";
+
     public static final String SEND_QUEUE = "send-queue";
 
     public static final String RECV_QUEUE = "recv-queue";

@@ -54,9 +54,17 @@ public class MeasurableSpout implements IRichSpout {
     private transient CMVMetric completeMetric;
     private Sampler sampler;
     private transient MultiCountMetric emitMetric;
+    private long lastMetricsSent;
 
     public MeasurableSpout(IRichSpout delegate) {
         this.delegate = delegate;
+    }
+
+    private long getMetricsDuration() {
+        long now = System.currentTimeMillis();
+        long duration = now - lastMetricsSent;
+        lastMetricsSent = now;
+        return duration;
     }
 
     @Override
@@ -64,6 +72,8 @@ public class MeasurableSpout implements IRichSpout {
         int interval = Utils.getInt(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
         completeMetric = context.registerMetric(MetricNames.COMPLETE_LATENCY, new CMVMetric(), interval);
         emitMetric = context.registerMetric(MetricNames.EMIT_COUNT, new MultiCountMetric(), interval);
+        lastMetricsSent = System.currentTimeMillis();
+        context.registerMetric(MetricNames.DURATION, this::getMetricsDuration, interval);
         sampler = new Sampler(ConfigUtil.getDouble(conf, ResaConfig.COMP_SAMPLE_RATE, 0.05));
         context.addTaskHook(new SpoutHook());
         delegate.open(conf, context, new SpoutOutputCollector(collector) {

@@ -64,6 +64,10 @@ class AggResultCalculator {
             parseQueueResult((Map<String, Number>) data, dest.getRecvQueueResult());
             return data;
         });
+        measuredData.data.computeIfPresent(MetricNames.DURATION, (comp, data) -> {
+            dest.setDuration((Long) data);
+            return data;
+        });
         if (rawTopo.get_spouts().containsKey(measuredData.component)) {
             Map<String, Object> data = (Map<String, Object>) measuredData.data.get(MetricNames.COMPLETE_LATENCY);
             if (data != null) {

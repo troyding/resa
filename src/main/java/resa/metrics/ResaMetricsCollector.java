@@ -26,6 +26,7 @@ public class ResaMetricsCollector extends FilteredMetricsCollector {
         addApprovedMetirc(MetricNames.COMPLETE_LATENCY);
         addApprovedMetirc(MetricNames.TASK_EXECUTE);
         addApprovedMetirc(MetricNames.EMIT_COUNT);
+        addApprovedMetirc(MetricNames.DURATION);
 
         measureBuffer = new ArrayList<>(bufferSize);
         topologyOptimizer.init((String) conf.get(Config.TOPOLOGY_NAME), conf, this::getCachedDataAndClearBuffer);

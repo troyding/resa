@@ -7,6 +7,7 @@ import java.util.Objects;
  */
 public class AggResult implements Cloneable {
 
+    protected long duration = 0;
     protected QueueAggResult sendQueueResult = new QueueAggResult();
     protected QueueAggResult recvQueueResult = new QueueAggResult();
 
@@ -17,8 +18,13 @@ public class AggResult implements Cloneable {
 
     public void add(AggResult r) {
         Objects.requireNonNull(r, "input AggResult cannot null");
+        this.duration += r.duration;
         this.sendQueueResult.add(r.sendQueueResult);
         this.recvQueueResult.add(r.recvQueueResult);
+    }
+
+    public void setDuration(long duration) {
+        this.duration = duration;
     }
 
     public QueueAggResult getSendQueueResult() {
