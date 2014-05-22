@@ -25,7 +25,7 @@ public class SimpleServiceModelAnalyzer {
      * b) any one of the node is unstable (i.e., lambda/mu > 1, in which case, sn.estErlangT will be Double.MAX_VALUE)
      * else the validate estimated erlang service time.
      */
-    public static double getErlangChainTopCompleteTime(Map<String, ServiceNode> components,
+    public static double getErlangGeneralTopCompleteTime(Map<String, ServiceNode> components,
                                                        Map<String, Integer> allocation) {
 
         if (allocation == null) {
@@ -47,9 +47,9 @@ public class SimpleServiceModelAnalyzer {
         return retVal;
     }
 
-    public static double getErlangChainTopCompleteTimeMilliSec(Map<String, ServiceNode> components,
+    public static double getErlangGeneralTopCompleteTimeMilliSec(Map<String, ServiceNode> components,
                                                                Map<String, Integer> allocation) {
-        double result = getErlangChainTopCompleteTime(components, allocation);
+        double result = getErlangGeneralTopCompleteTimeMilliSec(components, allocation);
         return result < Double.MAX_VALUE ? (result * 1000.0) : Double.MAX_VALUE;
     }
 
@@ -153,7 +153,7 @@ public class SimpleServiceModelAnalyzer {
             double currTime;
             do {
                 currAllocation = suggestAllocation(components, totalMinReq);
-                currTime = getErlangChainTopCompleteTime(components, currAllocation) * adjRatio;
+                currTime = getErlangGeneralTopCompleteTime(components, currAllocation) * adjRatio;
 
                 LOG.info("getMinReqServAllcQoS: "+maxAllowedCompleteTime*1000.0+", currTime(ms): "
                         + currTime * 1000.0 /adjRatio + ", currAdj(ms): "
@@ -185,7 +185,7 @@ public class SimpleServiceModelAnalyzer {
 
         ///Caution about the time unit!, second is used in all the functions of calculation
         /// millisecond is used in the output display!
-        double estimatedLatencyMilliSec = getErlangChainTopCompleteTimeMilliSec(queueingNetwork, currBoltAllocation);
+        double estimatedLatencyMilliSec = getErlangGeneralTopCompleteTime(queueingNetwork, currBoltAllocation);
 
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
@@ -200,66 +200,5 @@ public class SimpleServiceModelAnalyzer {
         LOG.info("Find out best allocation given available executors.");
         Map<String, Integer> after = suggestAllocation(queueingNetwork, maxAvailable4Bolt);
         return new OptimizeDecision(status, minReqAllocation, after);
-    }
-
-    /**
-     * Like module B in our discussion
-     *
-     * @param components
-     * @param conf
-     */
-    public static void checkOptimized(Map<String, ServiceNode> components, Map<String, Object> conf) {
-
-        Map<String, Integer> curr = getAllocation(components, conf);
-
-        ///Caution about the time unit!, second is used in all the functions of calculation
-        /// millisecond is used in the output display!
-        double estimatedLatencyMilliSec = getErlangChainTopCompleteTimeMilliSec(components, curr);
-        double realLatencyMilliSec = ConfigUtil.getDouble(conf, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);
-
-        ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
-        double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
-
-        double targetQoSMilliSec = ConfigUtil.getDouble(conf, "QoS", 5000.0);
-        boolean targetQoSSatisfied = estimatedLatencyMilliSec < targetQoSMilliSec;
-        int currAllocationCount = totalServerCountInvolved(curr);
-
-        LOG.info("estimated: " + estimatedLatencyMilliSec + ", estiQoSSatisfied: " + targetQoSSatisfied + ", real: "
-                + realLatencyMilliSec + ", realQoSSatisfied: " + (realLatencyMilliSec < targetQoSMilliSec));
-
-        Map<String, Integer> minReqAllocation = getMinReqServerAllocation(components, targetQoSMilliSec / 1000.0,
-                underEstimateRatio);
-        int minReqTotalServerCount = minReqAllocation == null ? Integer.MAX_VALUE :
-                totalServerCountInvolved(minReqAllocation);
-        double minReqQoSMilliSec = getErlangChainTopCompleteTimeMilliSec(components,
-                minReqAllocation);
-        double adjMinReqQoSMilliSec = getErlangChainTopCompleteTimeMilliSec(components, minReqAllocation) *
-                underEstimateRatio;
-
-        if (minReqAllocation == null) {
-            LOG.info("Caution: Target QoS is problematic, can not be achieved!");
-        } else {
-            LOG.info("MinReqTotalServerCount: " + minReqTotalServerCount + ", minReqQoS: " + minReqQoSMilliSec);
-            LOG.info("underEstimateRatio: " + underEstimateRatio + ", adjMinReqQoS: " + adjMinReqQoSMilliSec
-                    + ", optAllo: ");
-            printAllocation(minReqAllocation);
-        }
-
-        if (minReqAllocation != null) {
-            int remainCount = minReqTotalServerCount - currAllocationCount;
-            if (remainCount > 0) {
-                LOG.info("Require " + remainCount + " additional threads!!!");
-            } else {
-                LOG.info("Rebalance the current to suggested");
-                Map<String, Integer> after = suggestAllocation(components, currAllocationCount);
-                LOG.info("---------------------- Current Allocation ----------------------");
-                printAllocation(curr);
-                LOG.info("---------------------- Suggested Allocation ----------------------");
-                printAllocation(after);
-            }
-        } else {
-            LOG.info("Caution: Target QoS can never be achieved!");
-        }
-
     }
 }
