@@ -55,14 +55,6 @@ public class TAExpServWC2Redis {
         builder.setBolt("counter", new TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu)),
                 ConfigUtil.getInt(conf, "a1-counter.parallelism", 1)).setNumTasks(10).shuffleGrouping("split");
 
-        ///Map<String, Object> consumerArgs = new HashMap<>();
-        ///consumerArgs.put(RedisMetricsCollector.REDIS_HOST, host);
-        ///consumerArgs.put(RedisMetricsCollector.REDIS_PORT, port);
-        ///consumerArgs.put(FilteredMetricsCollector.APPROVED_METRIC_NAMES, Arrays.asList("complete-latency", "execute", "__sendqueue", "__receive", "duration"));
-        ///String queueName = (String) conf.get("a1-metrics.output.queue-name");
-        ///if (queueName != null) {
-        ///    consumerArgs.put(RedisMetricsCollector.REDIS_QUEUE_NAME, queueName);
-        ///}
 
         resaConfig.registerMetricsConsumer(RedisMetricsCollector.class, null, 1);
 

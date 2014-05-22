@@ -98,12 +98,12 @@ public class SimpleGeneralDecisionMakerTest {
             return;
         }
 
-        String host = "192.168.0.31";
+        String host = "192.168.0.30";
         int port = 6379;
         String queue = "ta1wc";
         int maxLen = 500;
 
-        String topoName = "ta1wc";
+        String topoName = "ta1wc2Redis";
 
         NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
         Nimbus.Client nimbus = nimbusClient.getClient();
