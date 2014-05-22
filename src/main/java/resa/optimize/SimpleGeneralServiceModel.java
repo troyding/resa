@@ -1,6 +1,7 @@
 package resa.optimize;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.stream.Collectors;
  */
 public class SimpleGeneralServiceModel {
 
-    private static final Logger LOG = Logger.getLogger(SimpleGeneralServiceModel.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleGeneralServiceModel.class);
 
     /**
      * Like module A in our discussion
@@ -26,7 +27,7 @@ public class SimpleGeneralServiceModel {
      * else the validate estimated erlang service time.
      */
     public static double getErlangGeneralTopCompleteTime(Map<String, ServiceNode> components,
-                                                       Map<String, Integer> allocation) {
+                                                         Map<String, Integer> allocation) {
 
         if (allocation == null) {
             return Double.MAX_VALUE;
@@ -48,7 +49,7 @@ public class SimpleGeneralServiceModel {
     }
 
     public static double getErlangGeneralTopCompleteTimeMilliSec(Map<String, ServiceNode> components,
-                                                               Map<String, Integer> allocation) {
+                                                                 Map<String, Integer> allocation) {
         double result = getErlangGeneralTopCompleteTimeMilliSec(components, allocation);
         return result < Double.MAX_VALUE ? (result * 1000.0) : Double.MAX_VALUE;
     }
@@ -155,9 +156,9 @@ public class SimpleGeneralServiceModel {
                 currAllocation = suggestAllocation(components, totalMinReq);
                 currTime = getErlangGeneralTopCompleteTime(components, currAllocation) * adjRatio;
 
-                LOG.info("getMinReqServAllcQoS: "+maxAllowedCompleteTime*1000.0+", currTime(ms): "
-                        + currTime * 1000.0 /adjRatio + ", currAdj(ms): "
-                        + currTime*1000.0 + ", totalMinReqQoS: " + totalMinReq);
+                LOG.info("getMinReqServAllcQoS: " + maxAllowedCompleteTime * 1000.0 + ", currTime(ms): "
+                        + currTime * 1000.0 / adjRatio + ", currAdj(ms): "
+                        + currTime * 1000.0 + ", totalMinReqQoS: " + totalMinReq);
 
                 totalMinReq++;
             } while (currTime > maxAllowedCompleteTime);

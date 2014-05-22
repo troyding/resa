@@ -1,6 +1,7 @@
 package resa.optimize;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.stream.Collectors;
  */
 public class SimpleChainServiceModel {
 
-    private static final Logger LOG = Logger.getLogger(SimpleChainServiceModel.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleChainServiceModel.class);
 
     /**
      * Like module A in our discussion
@@ -155,9 +156,9 @@ public class SimpleChainServiceModel {
                 currAllocation = suggestAllocation(components, totalMinReq);
                 currTime = getErlangChainTopCompleteTime(components, currAllocation) * adjRatio;
 
-                LOG.info("getMinReqServAllcQoS: "+maxAllowedCompleteTime*1000.0+", currTime(ms): "
-                        + currTime * 1000.0 /adjRatio + ", currAdj(ms): "
-                        + currTime*1000.0 + ", totalMinReqQoS: " + totalMinReq);
+                LOG.info("getMinReqServAllcQoS: " + maxAllowedCompleteTime * 1000.0 + ", currTime(ms): "
+                        + currTime * 1000.0 / adjRatio + ", currAdj(ms): "
+                        + currTime * 1000.0 + ", totalMinReqQoS: " + totalMinReq);
 
                 totalMinReq++;
             } while (currTime > maxAllowedCompleteTime);

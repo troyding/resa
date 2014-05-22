@@ -14,10 +14,15 @@
             <useProjectAttachments>true</useProjectAttachments>
             <unpack>true</unpack>
             <scope>test</scope>
-            <useTransitiveDependencies>false</useTransitiveDependencies>
+            <useTransitiveDependencies>true</useTransitiveDependencies>
             <excludes>
                 <exclude>org.apache.storm:storm-core</exclude>
                 <exclude>junit:*</exclude>
+                <exclude>org.slf4j:*</exclude>
+                <exclude>org.clojure:*</exclude>
+                <exclude>ring:*</exclude>
+                <exclude>org.mortbay.jetty:*</exclude>
+                <exclude>javax.servlet:*</exclude>
             </excludes>
         </dependencySet>
     </dependencySets>
