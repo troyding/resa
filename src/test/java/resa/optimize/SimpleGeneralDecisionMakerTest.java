@@ -10,8 +10,6 @@ import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Logger;
 import org.junit.Test;
 import resa.topology.RandomSentenceSpout;
 import resa.util.ResaConfig;
@@ -23,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * Created by Tom.fu on 5/5/2014.
  */
-public class SimpleModelDecisionMakerTest {
+public class SimpleGeneralDecisionMakerTest {
 
     private TopologyBuilder builder = new TopologyBuilder();
     private Map<String, Object> conf = ResaConfig.create(true);
@@ -63,7 +61,7 @@ public class SimpleModelDecisionMakerTest {
         currAllocation.put("split", 4);
         currAllocation.put("sentenceSpout", 1);
 
-        SimpleModelDecisionMaker smdm = new SimpleModelDecisionMaker();
+        SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
         smdm.init(conf, currAllocation, builder.createTopology());
 
         String host = "192.168.0.31";
@@ -117,7 +115,7 @@ public class SimpleModelDecisionMakerTest {
                 .collect(Collectors.groupingBy(e -> e.get_component_id(),
                         Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
 
-        SimpleModelDecisionMaker smdm = new SimpleModelDecisionMaker();
+        SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
         smdm.init(conf, currAllocation, gtc.getRawTopology());
 
         Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)

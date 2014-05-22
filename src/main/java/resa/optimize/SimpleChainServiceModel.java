@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
  * Created by Tom.fu on 23/4/2014.
  * Chain topology and not tuple split
  */
-public class SimpleChainServiceModelAnalyzer {
+public class SimpleChainServiceModel {
 
-    private static final Logger LOG = Logger.getLogger(SimpleChainServiceModelAnalyzer.class);
+    private static final Logger LOG = Logger.getLogger(SimpleChainServiceModel.class);
 
     /**
      * Like module A in our discussion

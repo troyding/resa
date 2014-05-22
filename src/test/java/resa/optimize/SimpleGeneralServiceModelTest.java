@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Created by Tom.fu on 2/5/2014.
  */
-public class SimpleServiceModelAnalyzerTest {
+public class SimpleGeneralServiceModelTest {
     @Test
     public void testGetErlangChainTopCompleteTime() throws Exception {
 
@@ -22,8 +22,8 @@ public class SimpleServiceModelAnalyzerTest {
         para.put("split", 4);
         para.put("counter", 2);
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.getAllocation(components, para);
-        double ret = SimpleServiceModelAnalyzer.getErlangChainTopCompleteTime(components, allo);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
+        double ret = SimpleGeneralServiceModel.getErlangChainTopCompleteTime(components, allo);
 
         System.out.println(ret);
     }
@@ -39,8 +39,8 @@ public class SimpleServiceModelAnalyzerTest {
         para.put("split", 4);
         para.put("counter", 2);
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.getAllocation(components, para);
-        double ret = SimpleServiceModelAnalyzer.getErlangChainTopCompleteTimeMilliSec(components, allo);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
+        double ret = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components, allo);
 
         System.out.println(ret);
     }
@@ -59,7 +59,7 @@ public class SimpleServiceModelAnalyzerTest {
         para.put("counter", 2);
         para.put("bolt3", 3);
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.getAllocation(components, para);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
 
         System.out.println(allo);
 
@@ -78,9 +78,9 @@ public class SimpleServiceModelAnalyzerTest {
         para.put("counter", 2);
         para.put("bolt3", 1);
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.getAllocation(components, para);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
 
-        boolean ret = SimpleServiceModelAnalyzer.checkStable(components, allo);
+        boolean ret = SimpleGeneralServiceModel.checkStable(components, allo);
         System.out.println(allo);
         System.out.println(ret);
     }
@@ -94,7 +94,7 @@ public class SimpleServiceModelAnalyzerTest {
         components.put("counter", new ServiceNode(6.0, 5.0, ServiceNode.ServiceType.EXPONENTIAL, 1.0));
         components.put("bolt3", new ServiceNode(2.0, 5.0, ServiceNode.ServiceType.EXPONENTIAL, 1.0));
 
-        int ret =SimpleServiceModelAnalyzer.getTotalMinRequirement(components);
+        int ret = SimpleGeneralServiceModel.getTotalMinRequirement(components);
         System.out.println(ret);
     }
 
@@ -105,7 +105,7 @@ public class SimpleServiceModelAnalyzerTest {
         components.put("split", new ServiceNode(11.0, 10.0, ServiceNode.ServiceType.EXPONENTIAL, 1.0));
         components.put("counter", new ServiceNode(11.0, 5.0, ServiceNode.ServiceType.EXPONENTIAL, 1.0));
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.suggestAllocation(components, 6);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.suggestAllocation(components, 6);
         System.out.println(allo);
     }
 
@@ -120,7 +120,7 @@ public class SimpleServiceModelAnalyzerTest {
         para.put("split", 4);
         para.put("counter", 2);
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.getMinReqServerAllocation(components, 1500, 0,  1.0234548286107188);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getMinReqServerAllocation(components, 1500, 0, 1.0234548286107188);
         System.out.println(allo);
     }
 
@@ -138,9 +138,9 @@ public class SimpleServiceModelAnalyzerTest {
         para.put("counter", 2);
         para.put("bolt3", 1);
 
-        Map<String, Integer> allo = SimpleServiceModelAnalyzer.getAllocation(components, para);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getAllocation(components, para);
 
-        int ret = SimpleServiceModelAnalyzer.totalServerCountInvolved(allo);
+        int ret = SimpleGeneralServiceModel.totalServerCountInvolved(allo);
         System.out.println(allo);
         System.out.println(ret);
 
@@ -164,26 +164,26 @@ public class SimpleServiceModelAnalyzerTest {
 
         int maxAvailable4Bolt = 6;
 
-        OptimizeDecision ret = SimpleServiceModelAnalyzer.checkOptimized(components, 765.9786516853933, 1500,  currBoltAllocation, maxAvailable4Bolt);
+        OptimizeDecision ret = SimpleGeneralServiceModel.checkOptimized(components, 765.9786516853933, 1500, currBoltAllocation, maxAvailable4Bolt);
 
-        double estimatedLatencyMilliSec = SimpleServiceModelAnalyzer.getErlangChainTopCompleteTimeMilliSec(components, currBoltAllocation);
+        double estimatedLatencyMilliSec = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components, currBoltAllocation);
         double realLatencyMilliSec = ConfigUtil.getDouble(conf, "avgCompleteHisMilliSec", estimatedLatencyMilliSec);
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
 
         double targetQoSMilliSec = ConfigUtil.getDouble(conf, "QoS", 5000.0);
         boolean targetQoSSatisfied = estimatedLatencyMilliSec < targetQoSMilliSec;
-        int currAllocationCount = SimpleServiceModelAnalyzer.totalServerCountInvolved(currBoltAllocation);
+        int currAllocationCount = SimpleGeneralServiceModel.totalServerCountInvolved(currBoltAllocation);
 
         System.out.println("estimated: " + estimatedLatencyMilliSec + ", estiQoSSatisfied: " + targetQoSSatisfied + ", real: "
                 + realLatencyMilliSec + ", realQoSSatisfied: " + (realLatencyMilliSec < targetQoSMilliSec));
 
-        Map<String, Integer> minReqAllocation = SimpleServiceModelAnalyzer.getMinReqServerAllocation(components, targetQoSMilliSec / 1000.0,
+        Map<String, Integer> minReqAllocation = SimpleGeneralServiceModel.getMinReqServerAllocation(components, targetQoSMilliSec / 1000.0,
                 underEstimateRatio);
         int minReqTotalServerCount = minReqAllocation == null ? Integer.MAX_VALUE :
-                SimpleServiceModelAnalyzer.totalServerCountInvolved(minReqAllocation);
-        double minReqQoSMilliSec = SimpleServiceModelAnalyzer.getErlangChainTopCompleteTimeMilliSec(components,
+                SimpleGeneralServiceModel.totalServerCountInvolved(minReqAllocation);
+        double minReqQoSMilliSec = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components,
                 minReqAllocation);
-        double adjMinReqQoSMilliSec = SimpleServiceModelAnalyzer.getErlangChainTopCompleteTimeMilliSec(components, minReqAllocation) *
+        double adjMinReqQoSMilliSec = SimpleGeneralServiceModel.getErlangChainTopCompleteTimeMilliSec(components, minReqAllocation) *
                 underEstimateRatio;
 
         System.out.println(currBoltAllocation);
@@ -197,7 +197,7 @@ public class SimpleServiceModelAnalyzerTest {
             System.out.println("MinReqTotalServerCount: " + minReqTotalServerCount + ", minReqQoS: " + minReqQoSMilliSec);
             System.out.println("underEstimateRatio: " + underEstimateRatio + ", adjMinReqQoS: " + adjMinReqQoSMilliSec
                     + ", optAllo: ");
-            SimpleServiceModelAnalyzer.printAllocation(minReqAllocation);
+            SimpleGeneralServiceModel.printAllocation(minReqAllocation);
         }
 
         if (minReqAllocation != null) {
@@ -206,11 +206,11 @@ public class SimpleServiceModelAnalyzerTest {
                 System.out.println("Require " + remainCount + " additional threads!!!");
             } else {
                 System.out.println("Rebalance the current to suggested");
-                Map<String, Integer> after = SimpleServiceModelAnalyzer.suggestAllocation(components, currAllocationCount);
+                Map<String, Integer> after = SimpleGeneralServiceModel.suggestAllocation(components, currAllocationCount);
                 System.out.println("---------------------- Current Allocation ----------------------");
-                SimpleServiceModelAnalyzer.printAllocation(currBoltAllocation);
+                SimpleGeneralServiceModel.printAllocation(currBoltAllocation);
                 System.out.println("---------------------- Suggested Allocation ----------------------");
-                SimpleServiceModelAnalyzer.printAllocation(after);
+                SimpleGeneralServiceModel.printAllocation(after);
             }
         } else {
             System.out.println("Caution: Target QoS can never be achieved!");

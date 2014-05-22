@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
 /**
  * Created by ding on 14-4-30.
  */
-public class SimpleModelDecisionMaker extends DecisionMaker {
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleModelDecisionMaker.class);
+public class SimpleGeneralDecisionMaker extends DecisionMaker {
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleGeneralDecisionMaker.class);
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
     private int historySize;
@@ -90,7 +90,7 @@ public class SimpleModelDecisionMaker extends DecisionMaker {
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
                 .filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        OptimizeDecision optimizeDecision = SimpleServiceModelAnalyzer.checkOptimized(queueingNetwork, avgCompleteHis,
+        OptimizeDecision optimizeDecision = SimpleGeneralServiceModel.checkOptimized(queueingNetwork, avgCompleteHis,
                 targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
         LOG.debug("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
         Map<String, Integer> ret = new HashMap<>(currAllocation);

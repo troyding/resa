@@ -57,7 +57,7 @@ public class TopologyOptimizer {
         // current allocation should be retrieved from nimbus
         currAllocation = getTopologyCurrAllocation();
         try {
-            String defaultAnalyzer = SimpleModelDecisionMaker.class.getName();
+            String defaultAnalyzer = SimpleGeneralDecisionMaker.class.getName();
             decisionMaker = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAnalyzer))
                     .asSubclass(DecisionMaker.class).newInstance();
         } catch (Exception e) {
