@@ -16,13 +16,24 @@
             <scope>test</scope>
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <excludes>
-                <exclude>org.apache.storm:storm-core</exclude>
+                <exclude>org.apache.storm:*</exclude>
                 <exclude>junit:*</exclude>
                 <exclude>org.slf4j:*</exclude>
                 <exclude>org.clojure:*</exclude>
                 <exclude>ring:*</exclude>
                 <exclude>org.mortbay.jetty:*</exclude>
                 <exclude>javax.servlet:*</exclude>
+                <exclude>jline:*</exclude>
+                <exclude>org.apache.zookeeper:*</exclude>
+                <exclude>hiccp:*</exclude>
+                <exclude>com.twitter:*</exclude>
+                <exclude>org.apache.http*:*</exclude>
+                <exclude>io.netty:*</exclude>
+                <exclude>clout:*</exclude>
+                <exclude>commons-*:*</exclude>
+                <exclude>com.esotericsoftware.*:*</exclude>
+                <exclude>clj-*:*</exclude>
+                <exclude>org.jgrapht:*</exclude>
             </excludes>
         </dependencySet>
     </dependencySets>
