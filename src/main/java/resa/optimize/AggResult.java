@@ -27,6 +27,10 @@ public class AggResult implements Cloneable {
         this.duration = duration;
     }
 
+    public long getDuration() {
+        return this.duration;
+    }
+
     public QueueAggResult getSendQueueResult() {
         return sendQueueResult;
     }

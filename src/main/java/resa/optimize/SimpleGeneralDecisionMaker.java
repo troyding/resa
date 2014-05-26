@@ -79,9 +79,9 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                     double avgCompleteHis = hisCarCombined.getAvg();///unit is millisecond
 
                     double totalComplteTupleCnt = hisCarCombined.getCount();
-                    double totalDuration = hisCar.duration;
+                    double totalDuration = hisCar.getDuration();
 
-                    //Note that totalCompleteCount is sampled and accumulated by history!
+                    ///TODO: here are some problem not solved yet. calculation is incorrect.
                     double tupleCompleteRate
                             = totalComplteTupleCnt * 1000.0 / (totalDuration * componentSampelRate);
 
@@ -121,6 +121,8 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
                     boolean recvQlenNormalHis = avgRecvQLenHis < recvQSizeThresh;
 
+                    int numberExecutor = currAllocation.get(e.getKey());
+                    LOG.info("exec(name, count): (" + e.getKey() + "," + numberExecutor + ")");
                     LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis + ", arrRateHis: "
                             + arrivalRateHis + ", avgServTimeHis(ms): " + avgServTimeHis);
                     LOG.info("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis);
