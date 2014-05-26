@@ -50,7 +50,7 @@ public class SimpleGeneralServiceModel {
 
     public static double getErlangGeneralTopCompleteTimeMilliSec(Map<String, ServiceNode> components,
                                                                  Map<String, Integer> allocation) {
-        double result = getErlangGeneralTopCompleteTimeMilliSec(components, allocation);
+        double result = getErlangGeneralTopCompleteTime(components, allocation);
         return result < Double.MAX_VALUE ? (result * 1000.0) : Double.MAX_VALUE;
     }
 
@@ -186,7 +186,7 @@ public class SimpleGeneralServiceModel {
 
         ///Caution about the time unit!, second is used in all the functions of calculation
         /// millisecond is used in the output display!
-        double estimatedLatencyMilliSec = getErlangGeneralTopCompleteTime(queueingNetwork, currBoltAllocation);
+        double estimatedLatencyMilliSec = getErlangGeneralTopCompleteTimeMilliSec(queueingNetwork, currBoltAllocation);
 
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);

@@ -2,12 +2,14 @@ package resa.optimize;
 
 import backtype.storm.Config;
 import backtype.storm.generated.StormTopology;
+import clojure.lang.MapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -52,12 +54,53 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
         double recvQSizeThreshRatio = ConfigUtil.getDouble(conf, "resa.opt.smd.rq.thresh.ratio", 0.6);
         double recvQSizeThresh = recvQSizeThreshRatio * maxRecvQSize;
 
+        double componentSampelRate = ConfigUtil.getDouble(conf, "resa.comp.sample.rate", 1.0);
+        /*
         double avgCompleteHis = spoutAregatedData.compHistoryResults.entrySet().stream().mapToDouble(e -> {
             Iterable<AggResult> results = e.getValue();
             SpoutAggResult hisCar = AggResult.getCombinedResult(new SpoutAggResult(), results);
             CntMeanVar hisCarCombined = hisCar.getCombinedCompletedLatency();
             return hisCarCombined.getAvg();
         }).average().getAsDouble();
+        */
+        ///Here we assume only one spout
+
+        Map<String, SourceNode> spInfos = spoutAregatedData.compHistoryResults.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> {
+                    Iterable<AggResult> results = e.getValue();
+                    SpoutAggResult hisCar = AggResult.getCombinedResult(new SpoutAggResult(), results);
+                    CntMeanVar hisCarCombined = hisCar.getCombinedCompletedLatency();
+
+                    double avgSendQLenHis = hisCar.getSendQueueResult().getAvgQueueLength();
+                    double avgRecvQLenHis = hisCar.getRecvQueueResult().getAvgQueueLength();
+                    double arrivalRateHis = hisCar.getRecvQueueResult().getArrivalRatePerSec();
+                    double departRateHis = hisCar.getSendQueueResult().getArrivalRatePerSec();
+
+                    double avgCompleteHis = hisCarCombined.getAvg();///unit is millisecond
+
+                    double totalComplteTupleCnt = hisCarCombined.getCount();
+                    double totalDuration = hisCar.duration;
+
+                    //Note that totalCompleteCount is sampled and accumulated by history!
+                    double tupleCompleteRate
+                            = totalComplteTupleCnt * 1000.0 / (totalDuration * componentSampelRate);
+
+                    int numberExecutor = currAllocation.get(e.getKey());
+                    ///TODO: there we multiply 1/2 for this particular implementation
+                    double tupleEmitRate = departRateHis * numberExecutor / 2.0;
+
+                    LOG.info("exec(name, count): (" + e.getKey() + "," + numberExecutor
+                            + "), tFinCnt: " + totalComplteTupleCnt + ", sumDur: " + totalDuration
+                            + ", tFinRate: " + tupleCompleteRate);
+                    LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis
+                            + ", RQarrRateHis: " + arrivalRateHis + ", SQarrRateHis: " + departRateHis);
+                    LOG.info("avgCompleHis: " + avgCompleteHis + ", tupleEmitRate: " + tupleEmitRate);
+
+                return new SourceNode(avgCompleteHis, totalComplteTupleCnt, totalDuration, tupleEmitRate);
+                }));
+
+        SourceNode spInfo = spInfos.entrySet().stream().findFirst().get().getValue();
+
         Map<String, ServiceNode> queueingNetwork = boltAregatedData.compHistoryResults.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> {
                     Iterable<AggResult> results = e.getValue();
@@ -90,8 +133,8 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
                 .filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        OptimizeDecision optimizeDecision = SimpleGeneralServiceModel.checkOptimized(queueingNetwork, avgCompleteHis,
-                targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
+        OptimizeDecision optimizeDecision = SimpleGeneralServiceModel.checkOptimized(queueingNetwork,
+                spInfo.getRealLatencyMilliSec(), targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
         LOG.debug("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
         Map<String, Integer> ret = new HashMap<>(currAllocation);
         // merge the optimized decision into source allocation

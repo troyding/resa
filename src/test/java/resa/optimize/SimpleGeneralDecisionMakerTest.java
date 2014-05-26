@@ -85,13 +85,17 @@ public class SimpleGeneralDecisionMakerTest {
     @Test
     public void testMakeUsingTopologyHelper() throws Exception {
 
-        conf.put(Config.NIMBUS_HOST, "192.168.0.31");
+        conf.put(Config.NIMBUS_HOST, "192.168.0.30");
         conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
 
         conf.put("resa.opt.smd.qos.ms", 1500.0);
         conf.put("resa.opt.win.history.size", 3);
 
-        GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc", conf);
+        conf.put("resa.comp.sample.rate", 1.0);
+
+        conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, 7);
+
+        GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc2Redis", conf);
 
         if (gtc == null) {
             System.out.println("gtc is null");

@@ -65,7 +65,7 @@ class AggResultCalculator {
             return data;
         });
         measuredData.data.computeIfPresent(MetricNames.DURATION, (comp, data) -> {
-            dest.setDuration((Long) data);
+            dest.setDuration(((Number) data).longValue());
             return data;
         });
         if (rawTopo.get_spouts().containsKey(measuredData.component)) {
