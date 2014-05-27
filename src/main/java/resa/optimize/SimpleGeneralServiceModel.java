@@ -40,7 +40,7 @@ public class SimpleGeneralServiceModel {
             // Objects.requireNonNull(serverCount, "No allocation entry find for this component" + cid);
             double est = sn.estErlangT(serverCount);
             if (est < Double.MAX_VALUE) {
-                retVal += est;
+                retVal += (est * sn.getI2oRatio());
             } else {
                 return Double.MAX_VALUE;
             }
@@ -50,7 +50,7 @@ public class SimpleGeneralServiceModel {
 
     public static double getErlangGeneralTopCompleteTimeMilliSec(Map<String, ServiceNode> components,
                                                                  Map<String, Integer> allocation) {
-        double result = getErlangGeneralTopCompleteTimeMilliSec(components, allocation);
+        double result = getErlangGeneralTopCompleteTime(components, allocation);
         return result < Double.MAX_VALUE ? (result * 1000.0) : Double.MAX_VALUE;
     }
 
@@ -88,7 +88,7 @@ public class SimpleGeneralServiceModel {
      * b) total minReq can not be satisfied (total minReq > totalResourceCount)
      * otherwise, the Map data structure.
      */
-    public static Map<String, Integer> suggestAllocation(Map<String, ServiceNode> components, int totalResourceCount) {
+    public static Map<String, Integer> suggestAllocationGeneralTop(Map<String, ServiceNode> components, int totalResourceCount) {
         Map<String, Integer> retVal = components.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
                 e -> e.getValue().getMinReqServerCount()));
         int topMinReq = retVal.values().stream().mapToInt(Integer::intValue).sum();
@@ -108,7 +108,7 @@ public class SimpleGeneralServiceModel {
                     double beforeAddT = sn.estErlangT(currentAllocated);
                     double afterAddT = sn.estErlangT(currentAllocated + 1);
 
-                    double diff = beforeAddT - afterAddT;
+                    double diff = (beforeAddT - afterAddT) * sn.getI2oRatio();
                     if (diff > maxDiff) {
                         maxDiff = diff;
                         maxDiffCid = cid;
@@ -136,7 +136,7 @@ public class SimpleGeneralServiceModel {
      * @return null if a) any service node is not in the valid state (mu = 0.0), this is not the case of rho > 1.0, just for checking mu
      * b) lowerBoundServiceTime > requiredQoS
      */
-    public static Map<String, Integer> getMinReqServerAllocation(Map<String, ServiceNode> components,
+    public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
                                                                  double maxAllowedCompleteTime,
                                                                  double lowerBoundDelta,
                                                                  double adjRatio) {
@@ -153,7 +153,7 @@ public class SimpleGeneralServiceModel {
         if (lowerBoundServiceTime + lowerBoundDelta < maxAllowedCompleteTime) {
             double currTime;
             do {
-                currAllocation = suggestAllocation(components, totalMinReq);
+                currAllocation = suggestAllocationGeneralTop(components, totalMinReq);
                 currTime = getErlangGeneralTopCompleteTime(components, currAllocation) * adjRatio;
 
                 LOG.info("getMinReqServAllcQoS: " + maxAllowedCompleteTime * 1000.0 + ", currTime(ms): "
@@ -166,14 +166,14 @@ public class SimpleGeneralServiceModel {
         return currAllocation;
     }
 
-    public static Map<String, Integer> getMinReqServerAllocation(Map<String, ServiceNode> components,
+    public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
                                                                  double maxAllowedCompleteTime) {
-        return getMinReqServerAllocation(components, maxAllowedCompleteTime, 0.0, 1.0);
+        return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, 1.0);
     }
 
-    public static Map<String, Integer> getMinReqServerAllocation(Map<String, ServiceNode> components,
+    public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
                                                                  double maxAllowedCompleteTime, double adjRatio) {
-        return getMinReqServerAllocation(components, maxAllowedCompleteTime, 0.0, adjRatio);
+        return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, adjRatio);
     }
 
     public static int totalServerCountInvolved(Map<String, Integer> allocation) {
@@ -186,20 +186,21 @@ public class SimpleGeneralServiceModel {
 
         ///Caution about the time unit!, second is used in all the functions of calculation
         /// millisecond is used in the output display!
-        double estimatedLatencyMilliSec = getErlangGeneralTopCompleteTime(queueingNetwork, currBoltAllocation);
+        double estimatedLatencyMilliSec = getErlangGeneralTopCompleteTimeMilliSec(queueingNetwork, currBoltAllocation);
 
         ///for better estimation, we remain (learn) this ratio, and assume that the estimated is always smaller than real.
         double underEstimateRatio = Math.max(1.0, realLatencyMilliSec / estimatedLatencyMilliSec);
-        LOG.info("estLatency(ms): " + estimatedLatencyMilliSec + ", realLatency(ms)" + realLatencyMilliSec + ", underEstRatio: " + underEstimateRatio);
+        LOG.info("estLatency(ms): " + estimatedLatencyMilliSec + ", realLatency(ms)" + realLatencyMilliSec
+                + ", underEstRatio: " + underEstimateRatio);
         LOG.info("Find out minReqAllocation under QoS requirement.");
-        Map<String, Integer> minReqAllocation = getMinReqServerAllocation(queueingNetwork, targetQoSMilliSec / 1000.0,
-                underEstimateRatio);
+        Map<String, Integer> minReqAllocation = getMinReqServerAllocationGeneralTop(queueingNetwork,
+                targetQoSMilliSec / 1000.0, underEstimateRatio);
         OptimizeDecision.Status status = OptimizeDecision.Status.FEASIBALE;
         if (minReqAllocation == null) {
             status = OptimizeDecision.Status.INFEASIBLE;
         }
         LOG.info("Find out best allocation given available executors.");
-        Map<String, Integer> after = suggestAllocation(queueingNetwork, maxAvailable4Bolt);
+        Map<String, Integer> after = suggestAllocationGeneralTop(queueingNetwork, maxAvailable4Bolt);
         return new OptimizeDecision(status, minReqAllocation, after);
     }
 }

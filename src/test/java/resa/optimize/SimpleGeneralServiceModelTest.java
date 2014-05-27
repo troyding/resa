@@ -105,7 +105,7 @@ public class SimpleGeneralServiceModelTest {
         components.put("split", new ServiceNode(11.0, 10.0, ServiceNode.ServiceType.EXPONENTIAL, 1.0));
         components.put("counter", new ServiceNode(11.0, 5.0, ServiceNode.ServiceType.EXPONENTIAL, 1.0));
 
-        Map<String, Integer> allo = SimpleGeneralServiceModel.suggestAllocation(components, 6);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.suggestAllocationGeneralTop(components, 6);
         System.out.println(allo);
     }
 
@@ -120,7 +120,7 @@ public class SimpleGeneralServiceModelTest {
         para.put("split", 4);
         para.put("counter", 2);
 
-        Map<String, Integer> allo = SimpleGeneralServiceModel.getMinReqServerAllocation(components, 1500, 0, 1.0234548286107188);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getMinReqServerAllocationGeneralTop(components, 1500, 0, 1.0234548286107188);
         System.out.println(allo);
     }
 
@@ -177,7 +177,7 @@ public class SimpleGeneralServiceModelTest {
         System.out.println("estimated: " + estimatedLatencyMilliSec + ", estiQoSSatisfied: " + targetQoSSatisfied + ", real: "
                 + realLatencyMilliSec + ", realQoSSatisfied: " + (realLatencyMilliSec < targetQoSMilliSec));
 
-        Map<String, Integer> minReqAllocation = SimpleGeneralServiceModel.getMinReqServerAllocation(components, targetQoSMilliSec / 1000.0,
+        Map<String, Integer> minReqAllocation = SimpleGeneralServiceModel.getMinReqServerAllocationGeneralTop(components, targetQoSMilliSec / 1000.0,
                 underEstimateRatio);
         int minReqTotalServerCount = minReqAllocation == null ? Integer.MAX_VALUE :
                 SimpleGeneralServiceModel.totalServerCountInvolved(minReqAllocation);
@@ -206,7 +206,7 @@ public class SimpleGeneralServiceModelTest {
                 System.out.println("Require " + remainCount + " additional threads!!!");
             } else {
                 System.out.println("Rebalance the current to suggested");
-                Map<String, Integer> after = SimpleGeneralServiceModel.suggestAllocation(components, currAllocationCount);
+                Map<String, Integer> after = SimpleGeneralServiceModel.suggestAllocationGeneralTop(components, currAllocationCount);
                 System.out.println("---------------------- Current Allocation ----------------------");
                 SimpleGeneralServiceModel.printAllocation(currBoltAllocation);
                 System.out.println("---------------------- Suggested Allocation ----------------------");

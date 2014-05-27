@@ -85,7 +85,7 @@ public class TopologyOptimizer {
             Map<String, List<ExecutorDetails>> topoExecutors = TopologyHelper.getTopologyExecutors(nimbus, topologyId)
                     .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            // topoExecutors == null means nimbus temporarily unreachable or this topology has been killed
+            // TODO: Executors == null means nimbus temporarily unreachable or this topology has been killed
             Map<String, Integer> allc = topoExecutors != null ? calcAllocation(topoExecutors) : null;
             if (allc != null && !allc.equals(currAllocation)) {
                 LOG.info("Topology allocation changed");
@@ -101,6 +101,8 @@ public class TopologyOptimizer {
                     LOG.info("Detected topology allocation changed, request rebalance....");
                     LOG.info("Old allc is " + currAllocation);
                     LOG.info("new allc is " + newAllocation);
+                    //TODO: tagged by Tom, in future, we need to improve
+                    // this rebanlace step to make more stable and smooth
                     requestRebalance(newAllocation);
                 }
             }

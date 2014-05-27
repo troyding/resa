@@ -39,11 +39,11 @@ public class SimpleGeneralDecisionMakerTest {
         builder.setSpout("sentenceSpout", spout, 1);
 
         double split_mu = 10.0;
-        IRichBolt splitBolt = new TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu));
+        IRichBolt splitBolt = new resa.topology.TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu));
         builder.setBolt("split", splitBolt, 4).shuffleGrouping("sentenceSpout");
 
         double counter_mu = 5.0;
-        IRichBolt wcBolt = new TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu));
+        IRichBolt wcBolt = new resa.topology.TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu));
         builder.setBolt("counter", wcBolt, 2).shuffleGrouping("split");
         t2c.clear();
         t2c.put(5, "sentenceSpout");
@@ -83,7 +83,7 @@ public class SimpleGeneralDecisionMakerTest {
     }
 
     @Test
-    public void testMakeUsingTopologyHelper() throws Exception {
+    public void testRebalanceUsingTopologyHelper() throws Exception {
 
         conf.put(Config.NIMBUS_HOST, "192.168.0.31");
         conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
@@ -92,6 +92,54 @@ public class SimpleGeneralDecisionMakerTest {
         conf.put("resa.opt.win.history.size", 3);
 
         GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc", conf);
+
+        if (gtc == null) {
+            System.out.println("gtc is null");
+            return;
+        }
+
+        String host = "192.168.0.31";
+        int port = 6379;
+        String queue = "ta1wc";
+        int maxLen = 500;
+
+        String topoName = "ta1wc";
+
+        NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+        Nimbus.Client nimbus = nimbusClient.getClient();
+        String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
+
+        Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
+                .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        for (int i = 0; i < 10000; i++) {
+            Utils.sleep(10000);
+
+            TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
+            Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+                    .collect(Collectors.groupingBy(e -> e.get_component_id(),
+                            Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+
+            System.out.println("-------------Report on: " + System.currentTimeMillis() + "------------------------------");
+            System.out.println(currAllocation);
+        }
+    }
+
+    @Test
+    public void testMakeUsingTopologyHelper() throws Exception {
+
+        conf.put(Config.NIMBUS_HOST, "192.168.0.30");
+        conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
+
+        conf.put("resa.opt.smd.qos.ms", 1500.0);
+        conf.put("resa.opt.win.history.size", 3);
+
+        conf.put("resa.comp.sample.rate", 1.0);
+
+        conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, 7);
+
+        GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc2Redis", conf);
 
         if (gtc == null) {
             System.out.println("gtc is null");
@@ -145,48 +193,61 @@ public class SimpleGeneralDecisionMakerTest {
         }
     }
 
-
     @Test
-    public void testRebalanceUsingTopologyHelper() throws Exception {
+    public void testMakeUsingTopologyHelperForkTopology() throws Exception {
 
-        conf.put(Config.NIMBUS_HOST, "192.168.0.31");
+        conf.put(Config.NIMBUS_HOST, "192.168.0.30");
         conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
 
         conf.put("resa.opt.smd.qos.ms", 1500.0);
         conf.put("resa.opt.win.history.size", 3);
+        conf.put("resa.comp.sample.rate", 1.0);
+        conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, 7);
 
-        GeneralTopologyContext gtc = TopologyHelper.getGeneralTopologyContext("ta1wc", conf);
-
-        if (gtc == null) {
-            System.out.println("gtc is null");
-            return;
-        }
-
-        String host = "192.168.0.31";
+        String host = "192.168.0.30";
         int port = 6379;
         String queue = "ta1wc";
         int maxLen = 500;
 
-        String topoName = "ta1wc";
-
         NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
         Nimbus.Client nimbus = nimbusClient.getClient();
+        String topoName = "ta1wc2Redis";
         String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
+
+        TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
+
+        Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+                .collect(Collectors.groupingBy(e -> e.get_component_id(),
+                        Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+
+        SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
+        smdm.init(conf, currAllocation, nimbus.getUserTopology(topoId));
 
         Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
                 .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         for (int i = 0; i < 10000; i++) {
-            Utils.sleep(10000);
+            Utils.sleep(30000);
 
-            TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
-            Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+            topoInfo = nimbus.getTopologyInfo(topoId);
+            Map<String, Integer> updatedAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
                     .collect(Collectors.groupingBy(e -> e.get_component_id(),
                             Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
 
+            AggResultCalculator resultCalculator = new AggResultCalculator(
+                    RedisDataSource.readData(host, port, queue, maxLen), comp2Executors, nimbus.getUserTopology(topoId));
+            resultCalculator.calCMVStat();
+
             System.out.println("-------------Report on: " + System.currentTimeMillis() + "------------------------------");
-            System.out.println(currAllocation);
+            if (currAllocation.equals(updatedAllocation)) {
+                System.out.println(currAllocation + "-->" + smdm.make(resultCalculator.getResults(), 7));
+            } else {
+                currAllocation = updatedAllocation;
+                smdm.allocationChanged(currAllocation);
+                System.out.println("Allocation updated to " + currAllocation);
+            }
         }
     }
+
 }
