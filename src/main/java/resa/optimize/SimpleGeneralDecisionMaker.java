@@ -121,13 +121,14 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                     boolean sendQLenNormalHis = avgSendQLenHis < sendQSizeThresh;
                     boolean recvQlenNormalHis = avgRecvQLenHis < recvQSizeThresh;
 
+                    double i2oRatio = lambdaHis / spInfo.getTupleLeaveRateOnSQ();
                     int numberExecutor = currAllocation.get(e.getKey());
                     LOG.info("exec(name, count): (" + e.getKey() + "," + numberExecutor + ")");
                     LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis + ", arrRateHis: "
                             + arrivalRateHis + ", avgServTimeHis(ms): " + avgServTimeHis);
-                    LOG.info("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis);
+                    LOG.info("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis + ", ratio: " + i2oRatio);
 
-                    return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, 1);
+                    return new ServiceNode(lambdaHis, muHis, ServiceNode.ServiceType.EXPONENTIAL, i2oRatio);
                 }));
         int maxThreadAvailable4Bolt = maxAvailableExecutors - currAllocation.entrySet().stream()
                 .filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))

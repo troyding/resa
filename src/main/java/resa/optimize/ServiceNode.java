@@ -10,7 +10,7 @@ public class ServiceNode {
     private double lambda;
     private double mu;
     private ServiceType type = ServiceType.OTHER;
-    private double o2iRatio;
+    private double i2oRatio;
 
     public ServiceNode(double l, double m, ServiceType t, double r) {
         lambda = l;
@@ -19,7 +19,7 @@ public class ServiceNode {
         }
         mu = m;
         type = t;
-        o2iRatio = r;
+        i2oRatio = r;
     }
 
     public void setLambda(double value) {
@@ -39,11 +39,11 @@ public class ServiceNode {
     }
 
     public void setO2IRatio(double value) {
-        this.o2iRatio = value;
+        this.i2oRatio = value;
     }
 
-    public double getO2iRatio() {
-        return this.o2iRatio;
+    public double getI2oRatio() {
+        return this.i2oRatio;
     }
 
 
