@@ -31,6 +31,10 @@ public class AggResult implements Cloneable {
         this.duration += duration;
     }
 
+    public long getDuration(){
+        return this.duration;
+    }
+
     public double getArrivalRatePerSec() {
         return recvQueueResult.getArrivalCount() * 1000.0 / (double) duration;
     }

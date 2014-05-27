@@ -228,7 +228,7 @@ public class SimpleGeneralDecisionMakerTest {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         for (int i = 0; i < 10000; i++) {
-            Utils.sleep(30000);
+            Utils.sleep(40000);
 
             topoInfo = nimbus.getTopologyInfo(topoId);
             Map<String, Integer> updatedAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
