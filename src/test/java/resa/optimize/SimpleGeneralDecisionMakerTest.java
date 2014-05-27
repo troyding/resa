@@ -39,11 +39,11 @@ public class SimpleGeneralDecisionMakerTest {
         builder.setSpout("sentenceSpout", spout, 1);
 
         double split_mu = 10.0;
-        IRichBolt splitBolt = new TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu));
+        IRichBolt splitBolt = new resa.topology.TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu));
         builder.setBolt("split", splitBolt, 4).shuffleGrouping("sentenceSpout");
 
         double counter_mu = 5.0;
-        IRichBolt wcBolt = new TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu));
+        IRichBolt wcBolt = new resa.topology.TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu));
         builder.setBolt("counter", wcBolt, 2).shuffleGrouping("split");
         t2c.clear();
         t2c.put(5, "sentenceSpout");
