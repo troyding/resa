@@ -66,7 +66,7 @@ public class SimpleChainDecisionMaker extends DecisionMaker {
 
                     double avgSendQLenHis = hisCar.getSendQueueResult().getAvgQueueLength();
                     double avgRecvQLenHis = hisCar.getRecvQueueResult().getAvgQueueLength();
-                    double arrivalRateHis = hisCar.getRecvQueueResult().getArrivalRatePerSec();
+                    double arrivalRateHis = hisCar.getArrivalRatePerSec();
                     double avgServTimeHis = hisCarCombined.getAvg();///unit is millisecond
 
                     double lambdaHis = arrivalRateHis * currAllocation.get(e.getKey());

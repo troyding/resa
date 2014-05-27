@@ -2,7 +2,8 @@ package resa.optimize;
 
 import org.junit.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AggResultTest {
 

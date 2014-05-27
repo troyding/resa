@@ -6,27 +6,21 @@ package resa.optimize;
 public class QueueAggResult implements Cloneable {
 
     private long arrivalCount;
-    private long duration;
     private long totalQueueLength;
     private int totalSampleCount;
 
-    public QueueAggResult(long arrivalCount, long duration, long totalQueueLength, int totalSampleCount) {
+    public QueueAggResult(long arrivalCount, long totalQueueLength, int totalSampleCount) {
         this.arrivalCount = arrivalCount;
-        this.duration = duration;
         this.totalQueueLength = totalQueueLength;
         this.totalSampleCount = totalSampleCount;
     }
 
     public QueueAggResult() {
-        this(0, 0, 0, 0);
+        this(0, 0, 0);
     }
 
     public double getAvgQueueLength() {
-        return totalSampleCount > 0 ? (double)totalQueueLength / (double)totalSampleCount : 0.0;
-    }
-
-    public double getArrivalRatePerSec() {
-        return arrivalCount * 1000.0 / (double) duration;
+        return totalSampleCount > 0 ? (double) totalQueueLength / (double) totalSampleCount : 0.0;
     }
 
     public long getArrivalCount() {
@@ -37,30 +31,25 @@ public class QueueAggResult implements Cloneable {
         return totalQueueLength;
     }
 
-    public long getDuration() {
-        return duration;
-    }
-
     public int getTotalSampleCount() {
         return totalSampleCount;
     }
 
     public void add(QueueAggResult result) {
-        arrivalCount += result.arrivalCount;
-        duration += result.duration;
+        this.arrivalCount += arrivalCount;
         totalQueueLength += result.totalQueueLength;
         totalSampleCount += result.totalSampleCount;
     }
 
-    public void add(long arrivalCount, long duration, long totalQueueLength, int totalSampleCount) {
+    public void add(long arrivalCount, long totalQueueLength, int totalSampleCount) {
         this.arrivalCount += arrivalCount;
-        this.duration += duration;
         this.totalQueueLength += totalQueueLength;
         this.totalSampleCount += totalSampleCount;
     }
 
     @Override
     public String toString() {
-        return String.format("arrCount: %d, dur: %d, totalQLen: %d, totalSamCnt: %d, arrRatePerSec: %.5f", arrivalCount, duration, totalQueueLength, totalSampleCount, getArrivalRatePerSec());
+        return String.format("arrCount: %d, dur: %d, totalQLen: %d, totalSamCnt: %d", arrivalCount,
+                totalQueueLength, totalSampleCount);
     }
 }
