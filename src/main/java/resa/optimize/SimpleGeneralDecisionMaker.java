@@ -63,8 +63,8 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
 
                     double avgSendQLenHis = hisCar.getSendQueueResult().getAvgQueueLength();
                     double avgRecvQLenHis = hisCar.getRecvQueueResult().getAvgQueueLength();
-                    double arrivalRateHis = hisCar.getArrivalRatePerSec();
-                    double departRateHis = hisCar.getArrivalRatePerSec();
+
+                    double departRateHis = hisCar.getDepartureRatePerSec();
 
                     double avgCompleteHis = hisCarCombined.getAvg();///unit is millisecond
 
@@ -83,7 +83,7 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                             + "), tFinCnt: " + totalComplteTupleCnt + ", sumDur: " + totalDuration
                             + ", tFinRate: " + tupleCompleteRate);
                     LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis
-                            + ", RQarrRateHis: " + arrivalRateHis + ", SQarrRateHis: " + departRateHis);
+                            + ", SQarrRateHis: " + departRateHis);
                     LOG.info("avgCompleHis: " + avgCompleteHis + ", tupleEmitRate: " + tupleEmitRate);
 
                     return new SourceNode(avgCompleteHis, totalComplteTupleCnt, totalDuration, tupleEmitRate);

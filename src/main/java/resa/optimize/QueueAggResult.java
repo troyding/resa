@@ -36,9 +36,9 @@ public class QueueAggResult implements Cloneable {
     }
 
     public void add(QueueAggResult result) {
-        this.arrivalCount += arrivalCount;
-        totalQueueLength += result.totalQueueLength;
-        totalSampleCount += result.totalSampleCount;
+        this.arrivalCount += result.arrivalCount;
+        this.totalQueueLength += result.totalQueueLength;
+        this.totalSampleCount += result.totalSampleCount;
     }
 
     public void add(long arrivalCount, long totalQueueLength, int totalSampleCount) {
@@ -49,7 +49,7 @@ public class QueueAggResult implements Cloneable {
 
     @Override
     public String toString() {
-        return String.format("arrCount: %d, dur: %d, totalQLen: %d, totalSamCnt: %d", arrivalCount,
+        return String.format("arrCount: %d, totalQLen: %d, totalSamCnt: %d", arrivalCount,
                 totalQueueLength, totalSampleCount);
     }
 }

@@ -67,7 +67,7 @@ class AggResultCalculator {
         });
         if (firstTasks.contains(measuredData.task)) {
             measuredData.data.computeIfPresent(MetricNames.DURATION, (comp, data) -> {
-                dest.addDuration((Long) data);
+                dest.addDuration(((Number) data).longValue());
                 return data;
             });
         }
