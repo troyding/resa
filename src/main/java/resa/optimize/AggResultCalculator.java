@@ -7,9 +7,7 @@ import org.slf4j.LoggerFactory;
 import resa.metrics.MeasuredData;
 import resa.metrics.MetricNames;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -27,6 +25,7 @@ class AggResultCalculator {
     private StormTopology rawTopo;
     private final Map<Integer, AggResult> task2Result = new HashMap<>();
     private final Map<String, AggResult[]> results = new HashMap<>();
+    private final Set<Integer> firstTasks;
 
     public AggResultCalculator(Iterable<MeasuredData> dataStream, Map<String, List<ExecutorDetails>> comp2Executors,
                                StormTopology rawTopo) {
@@ -47,6 +46,8 @@ class AggResultCalculator {
             }
             results.put(comp, result);
         });
+        firstTasks = comp2Executors.values().stream().flatMap(e -> e.stream()).map(ExecutorDetails::getStartTask)
+                .collect(Collectors.toSet());
     }
 
     private AggResult createTaskIndex(AggResult result, ExecutorDetails e) {
@@ -64,10 +65,12 @@ class AggResultCalculator {
             parseQueueResult((Map<String, Number>) data, dest.getRecvQueueResult());
             return data;
         });
-        measuredData.data.computeIfPresent(MetricNames.DURATION, (comp, data) -> {
-            dest.setDuration((Long) data);
-            return data;
-        });
+        if (firstTasks.contains(measuredData.task)) {
+            measuredData.data.computeIfPresent(MetricNames.DURATION, (comp, data) -> {
+                dest.addDuration((Long) data);
+                return data;
+            });
+        }
         if (rawTopo.get_spouts().containsKey(measuredData.component)) {
             Map<String, Object> data = (Map<String, Object>) measuredData.data.get(MetricNames.COMPLETE_LATENCY);
             if (data != null) {
@@ -105,8 +108,8 @@ class AggResultCalculator {
         if (totalArrivalCnt > 0) {
             int sampleCnt = queueMetrics.getOrDefault("sampleCount", Integer.valueOf(0)).intValue();
             long totalQLen = queueMetrics.getOrDefault("totalQueueLen", Integer.valueOf(0)).longValue();
-            long duration = queueMetrics.getOrDefault("duration", Integer.valueOf(0)).longValue();
-            queueResult.add(totalArrivalCnt, duration, totalQLen, sampleCnt);
+            // long duration = queueMetrics.getOrDefault("duration", Integer.valueOf(0)).longValue();
+            queueResult.add(totalArrivalCnt, totalQLen, sampleCnt);
         }
     }
 
