@@ -80,8 +80,8 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                     double tupleEmitRate = departRateHis * numberExecutor / 2.0;
 
                     LOG.info("exec(name, count): (" + e.getKey() + "," + numberExecutor
-                            + "), tFinCnt: " + totalComplteTupleCnt + ", sumDur: " + totalDuration
-                            + ", tFinRate: " + tupleCompleteRate);
+                            + "), tupleFinCnt: " + totalComplteTupleCnt + ", sumDur: " + totalDuration
+                            + ", componentSampelRate: " + componentSampelRate + ", tupleFinRate: " + tupleCompleteRate);
                     LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis
                             + ", SQarrRateHis: " + departRateHis);
                     LOG.info("avgCompleHis: " + avgCompleteHis + ", tupleEmitRate: " + tupleEmitRate);
