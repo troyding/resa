@@ -12,7 +12,7 @@ import java.io.File;
  * This topology demonstrates Storm's stream groupings and multilang
  * capabilities.
  */
-public class TAExpServWC {
+public class TAExpServWCResa {
 
 
     public static void main(String[] args) throws Exception {

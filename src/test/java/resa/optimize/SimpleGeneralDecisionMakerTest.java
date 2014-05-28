@@ -202,7 +202,7 @@ public class SimpleGeneralDecisionMakerTest {
         conf.put("resa.opt.smd.qos.ms", 1500.0);
         conf.put("resa.opt.win.history.size", 3);
         conf.put("resa.comp.sample.rate", 1.0);
-        conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, 7);
+        conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, 8);
 
         String host = "192.168.0.30";
         int port = 6379;
@@ -211,7 +211,8 @@ public class SimpleGeneralDecisionMakerTest {
 
         NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
         Nimbus.Client nimbus = nimbusClient.getClient();
-        String topoName = "ta1wc2Redis";
+        //String topoName = "ta1wc2P2Redis";
+        String topoName = "ta1wcLoopRedis";
         String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
 
         TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
@@ -241,7 +242,7 @@ public class SimpleGeneralDecisionMakerTest {
 
             System.out.println("-------------Report on: " + System.currentTimeMillis() + "------------------------------");
             if (currAllocation.equals(updatedAllocation)) {
-                System.out.println(currAllocation + "-->" + smdm.make(resultCalculator.getResults(), 7));
+                System.out.println(currAllocation + "-->" + smdm.make(resultCalculator.getResults(), 8));
             } else {
                 currAllocation = updatedAllocation;
                 smdm.allocationChanged(currAllocation);
