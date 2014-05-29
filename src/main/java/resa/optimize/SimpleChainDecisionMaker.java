@@ -92,10 +92,11 @@ public class SimpleChainDecisionMaker extends DecisionMaker {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         OptimizeDecision optimizeDecision = SimpleGeneralServiceModel.checkOptimized(queueingNetwork, avgCompleteHis,
                 targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
-        LOG.debug("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
         Map<String, Integer> ret = new HashMap<>(currAllocation);
         // merge the optimized decision into source allocation
         ret.putAll(optimizeDecision.currOptAllocation);
+        LOG.info(currAllocation + "-->" + ret);
+        LOG.info("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
         return ret;
     }
 
