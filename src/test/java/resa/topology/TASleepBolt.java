@@ -4,7 +4,6 @@ import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.utils.Utils;
 
 import java.util.Map;
 
@@ -29,7 +28,16 @@ public abstract class TASleepBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         long inter = this.sleep.get();
         if (inter > 0) {
-            Utils.sleep(inter);
+            performSleep(inter);
         }
+    }
+
+    private void performSleep(long interval) {
+        long stop = System.currentTimeMillis() + interval;
+        do {
+            for (int i = 0; i < 1000; i++) {
+                Math.sqrt(Math.random() * Integer.MAX_VALUE);
+            }
+        } while (System.currentTimeMillis() < stop);
     }
 }

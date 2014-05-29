@@ -9,6 +9,7 @@ import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
+import resa.metrics.RedisMetricsCollector;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
@@ -33,10 +34,13 @@ public class WordCountTopology {
 
         @Override
         public void execute(Tuple input, BasicOutputCollector collector) {
-            String sentence = input.getString(0);
-            StringTokenizer tokenizer = new StringTokenizer(sentence, "\\s+");
+            String sentence = input.getStringByField("sentence");
+            StringTokenizer tokenizer = new StringTokenizer(sentence.replaceAll("\\p{P}|\\p{S}", " "));
             while (tokenizer.hasMoreTokens()) {
-                collector.emit(Arrays.asList((Object) tokenizer.nextToken()));
+                String word = tokenizer.nextToken().trim();
+                if (!word.isEmpty()) {
+                    collector.emit(Arrays.asList((Object) word.toLowerCase()));
+                }
             }
             // Utils.sleep(1000);
         }
@@ -63,10 +67,11 @@ public class WordCountTopology {
 
         @Override
         public void execute(Tuple tuple, BasicOutputCollector collector) {
-            String word = tuple.getString(0);
+            String word = tuple.getStringByField("word");
             Integer count = counts.get(word);
-            if (count == null)
+            if (count == null) {
                 count = 0;
+            }
             count++;
             counts.put(word, count);
             collector.emit(new Values(word, count));
@@ -87,7 +92,6 @@ public class WordCountTopology {
     public static void main(String[] args) throws Exception {
 
         Config conf = ConfigUtil.readConfig(new File(args[1]));
-
         if (conf == null) {
             throw new RuntimeException("cannot find conf file " + args[1]);
         }
@@ -96,14 +100,22 @@ public class WordCountTopology {
         resaConfig.putAll(conf);
 
         TopologyBuilder builder = new ResaTopologyBuilder();
-        builder.setSpout("say", new RandomSentenceSpout(), 2);
 
-        builder.setBolt("split", new SplitSentence(), 4).shuffleGrouping("say").setNumTasks(8);
-        builder.setBolt("counter", new WordCount(), 3).fieldsGrouping("split", new Fields("word")).setNumTasks(6);
+        if (!ConfigUtil.getBoolean(conf, "spout.redis", false)) {
+            builder.setSpout("say", new RandomSentenceSpout(), ConfigUtil.getInt(conf, "spout.parallelism", 1));
+        } else {
+            String host = (String) conf.get("redis.host");
+            int port = ((Number) conf.get("redis.port")).intValue();
+            String queue = (String) conf.get("redis.queue");
+            builder.setSpout("say", new TASentenceSpout(host, port, queue),
+                    ConfigUtil.getInt(conf, "spout.parallelism", 1));
+        }
+        builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "split.parallelism", 1))
+                .shuffleGrouping("say");
+        builder.setBolt("counter", new WordCount(), ConfigUtil.getInt(conf, "counter.parallelism", 1))
+                .fieldsGrouping("split", new Fields("word")).setNumTasks(36);
 
-        resaConfig.addOptimizeSupport();
-        resaConfig.put(ResaConfig.ANALYZER_CLASS, FakeDecisionMaker.class.getName());
-        resaConfig.put(ResaConfig.REBALANCE_WAITING_SECS, 0);
+        resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 }
