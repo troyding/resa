@@ -92,9 +92,9 @@ public class Detector implements IRichBolt {
         outlier.set(objId, newNeighborCount < minNeighborCount);
 
         //if any objects missing, wait for it. This is used when system startup
-        if (!anyObjectMissing) {
-            collector.emit(input, new Values(objId, projId, outlier, input.getValueByField(ObjectSpout.TIME_FILED)));
-        }
+        ///if (!anyObjectMissing) {
+        collector.emit(input, new Values(objId, projId, outlier, input.getValueByField(ObjectSpout.TIME_FILED)));
+        ///}
         collector.ack(input);
     }
 
