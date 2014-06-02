@@ -11,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 /**
@@ -31,15 +30,13 @@ public class DataSender {
 
     public void send2Queue(Path inputFile, LongSupplier sleep) throws IOException {
         Jedis jedis = new Jedis(host, port);
-        AtomicLong counter = new AtomicLong(0);
         try (BufferedReader reader = Files.newBufferedReader(inputFile)) {
             reader.lines().forEach((line) -> {
                 long ms = sleep.getAsLong();
                 if (ms > 0) {
                     Utils.sleep(ms);
                 }
-                String data = counter.getAndIncrement() + "|" + System.currentTimeMillis() + "|" + line;
-                jedis.rpush(queueName, data);
+                jedis.rpush(queueName, line);
             });
         } finally {
             jedis.quit();
@@ -70,7 +67,7 @@ public class DataSender {
                 }
                 double left = Float.parseFloat(args[3]);
                 double right = Float.parseFloat(args[4]);
-                sender.send2Queue(dataFile, () -> (long)(1000 / (Math.random() * (right - left) + left)));
+                sender.send2Queue(dataFile, () -> (long) (1000 / (Math.random() * (right - left) + left)));
             default:
                 System.out.println("usage: DataSender <confFile> <inputFile> [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
                 ///sender.send2Queue(dataFile, () -> 0);
