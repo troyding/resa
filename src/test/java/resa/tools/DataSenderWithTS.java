@@ -52,8 +52,8 @@ public class DataSenderWithTS {
     }
 
     public static void main(String[] args) throws IOException {
-        if (args.length < 3) {
-            System.out.println("usage: DataSender <confFile> <inputFile> <maxPadding Size> " +
+        if (args.length < 4) {
+            System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize> " +
                     "[-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
             return;
         }
@@ -72,15 +72,17 @@ public class DataSenderWithTS {
                 sender.send2Queue(dataFile, () -> (long) (-Math.log(Math.random()) * 1000 / lambda));
                 break;
             case "uniform":
-                if (args.length < 5) {
-                    System.out.println("usage: DataSender <confFile> <inputFile> [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
+                if (args.length < 6) {
+                    System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize>" +
+                            " [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
                     return;
                 }
                 double left = Float.parseFloat(args[4]);
                 double right = Float.parseFloat(args[5]);
                 sender.send2Queue(dataFile, () -> (long) (1000 / (Math.random() * (right - left) + left)));
             default:
-                System.out.println("usage: DataSender <confFile> <inputFile> [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
+                System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize>" +
+                        " [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
                 ///sender.send2Queue(dataFile, () -> 0);
                 break;
         }
