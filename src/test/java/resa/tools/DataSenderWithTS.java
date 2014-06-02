@@ -11,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 /**
@@ -32,7 +31,7 @@ public class DataSenderWithTS {
 
     public void send2Queue(Path inputFile, LongSupplier sleep) throws IOException {
         Jedis jedis = new Jedis(host, port);
-        AtomicLong counter = new AtomicLong(0);
+        int counter = 0;
         try (BufferedReader reader = Files.newBufferedReader(inputFile)) {
             String line = null;
             while (line != null || (line = reader.readLine()) != null) {
@@ -41,7 +40,7 @@ public class DataSenderWithTS {
                     Utils.sleep(ms);
                 }
                 if (jedis.llen(queueName) < maxPaddingSize) {
-                    String data = counter.getAndIncrement() + "|" + System.currentTimeMillis() + "|" + line;
+                    String data = counter++ + "|" + System.currentTimeMillis() + "|" + line;
                     jedis.rpush(queueName, data);
                     line = null;
                 }
