@@ -101,19 +101,25 @@ public class WordCountTopology {
 
         TopologyBuilder builder = new ResaTopologyBuilder();
 
+        int numWorkers = ConfigUtil.getInt(conf, "arwc-worker.count", 1);
+        int numAckers = ConfigUtil.getInt(conf, "arwc-acker.count", 1);
+
+        resaConfig.setNumWorkers(numWorkers);
+        resaConfig.setNumAckers(numAckers);
+
         if (!ConfigUtil.getBoolean(conf, "spout.redis", false)) {
-            builder.setSpout("say", new RandomSentenceSpout(), ConfigUtil.getInt(conf, "spout.parallelism", 1));
+            builder.setSpout("say", new RandomSentenceSpout(), ConfigUtil.getInt(conf, "arwc-spout.parallelism", 1));
         } else {
             String host = (String) conf.get("redis.host");
             int port = ((Number) conf.get("redis.port")).intValue();
             String queue = (String) conf.get("redis.queue");
             builder.setSpout("say", new TASentenceSpout(host, port, queue),
-                    ConfigUtil.getInt(conf, "spout.parallelism", 1));
+                    ConfigUtil.getInt(conf, "arwc-spout.parallelism", 1));
         }
-        builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "split.parallelism", 1))
+        builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "arwc-split.parallelism", 1))
                 .setNumTasks(10)
                 .shuffleGrouping("say");
-        builder.setBolt("counter", new WordCount(), ConfigUtil.getInt(conf, "counter.parallelism", 1))
+        builder.setBolt("counter", new WordCount(), ConfigUtil.getInt(conf, "arwc-counter.parallelism", 1))
                 .setNumTasks(10)
                 .fieldsGrouping("split", new Fields("word"));
 
