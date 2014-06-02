@@ -215,7 +215,7 @@ public class SimpleGeneralDecisionMakerTest {
         Nimbus.Client nimbus = nimbusClient.getClient();
         //String topoName = "ta1wc2P2Redis";
         ///String topoName = "ta1wcLoopRedis";
-        String topoName = "outdet2Redis";
+        String topoName = "arwcRedis";
         String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
 
         TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
