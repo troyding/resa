@@ -111,11 +111,14 @@ public class WordCountTopology {
                     ConfigUtil.getInt(conf, "spout.parallelism", 1));
         }
         builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "split.parallelism", 1))
+                .setNumTasks(10)
                 .shuffleGrouping("say");
         builder.setBolt("counter", new WordCount(), ConfigUtil.getInt(conf, "counter.parallelism", 1))
-                .fieldsGrouping("split", new Fields("word")).setNumTasks(36);
+                .setNumTasks(10)
+                .fieldsGrouping("split", new Fields("word"));
 
         resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
+
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 }
