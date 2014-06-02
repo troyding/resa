@@ -123,16 +123,17 @@ public class RealWordCount {
                 .setNumTasks(defaultTaskNum)
                 .fieldsGrouping("split", new Fields("word"));
 
-        if (ConfigUtil.getBoolean(conf, "arwc-metric.redis", false)){
-            resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
-            System.out.println("RedisMetricsCollector is registered");
-        }
-
         if (ConfigUtil.getBoolean(conf, "arwc-metric.resa", false)){
             resaConfig.addOptimizeSupport();
             resaConfig.put(ResaConfig.REBALANCE_WAITING_SECS, 0);
             System.out.println("ResaMetricsCollector is registered");
         }
+
+        if (ConfigUtil.getBoolean(conf, "arwc-metric.redis", false)){
+            resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
+            System.out.println("RedisMetricsCollector is registered");
+        }
+
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 }
