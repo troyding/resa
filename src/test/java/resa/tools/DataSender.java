@@ -1,4 +1,4 @@
-package resa.topology;
+package resa.tools;
 
 import backtype.storm.utils.Utils;
 import redis.clients.jedis.Jedis;
