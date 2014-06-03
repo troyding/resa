@@ -60,4 +60,15 @@ public class RedisDataSource {
         writeData2File(args[0], Integer.parseInt(args[1]), args[2], Integer.parseInt(args[3]), args[4]);
     }
 
+    public static void clearQueue(String host, int port, String queue) {
+        Jedis jedis = new Jedis(host, port);
+        try {
+                jedis.del(queue);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            jedis.disconnect();
+        }
+    }
 }

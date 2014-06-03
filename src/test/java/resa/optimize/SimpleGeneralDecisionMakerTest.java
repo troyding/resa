@@ -229,9 +229,6 @@ public class SimpleGeneralDecisionMakerTest {
         SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
         smdm.init(conf, currAllocation, nimbus.getUserTopology(topoId));
 
-        Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
-                .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         for (int i = 0; i < 10000; i++) {
             Utils.sleep(30000);
@@ -240,6 +237,10 @@ public class SimpleGeneralDecisionMakerTest {
             Map<String, Integer> updatedAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
                     .collect(Collectors.groupingBy(e -> e.get_component_id(),
                             Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+
+            Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
+                    .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
             AggResultCalculator resultCalculator = new AggResultCalculator(
                     RedisDataSource.readData(host, port, queue, maxLen), comp2Executors, nimbus.getUserTopology(topoId));
@@ -251,6 +252,7 @@ public class SimpleGeneralDecisionMakerTest {
             } else {
                 currAllocation = updatedAllocation;
                 smdm.allocationChanged(currAllocation);
+                RedisDataSource.clearQueue(host, port, queue);
                 System.out.println("Allocation updated to " + currAllocation);
             }
         }

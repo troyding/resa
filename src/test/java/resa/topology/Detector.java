@@ -91,6 +91,7 @@ public class Detector implements IRichBolt {
         context.neighborCount[objId] = newNeighborCount;
         outlier.set(objId, newNeighborCount < minNeighborCount);
 
+        //Modified by tom, at the initial stat, we force this bolt to emit tuples (although fake) to Updater
         //if any objects missing, wait for it. This is used when system startup
         ///if (!anyObjectMissing) {
         collector.emit(input, new Values(objId, projId, outlier, input.getValueByField(ObjectSpout.TIME_FILED)));
