@@ -201,6 +201,7 @@ public class SimpleGeneralDecisionMakerTest {
 
         conf.put("resa.opt.smd.qos.ms", 1500.0);
         conf.put("resa.opt.win.history.size", 3);
+        conf.put("resa.opt.win.history.size.ignore", -1);
         conf.put("resa.comp.sample.rate", 1.0);
 
         int allewedExecutorNum = 7;
@@ -215,7 +216,8 @@ public class SimpleGeneralDecisionMakerTest {
         Nimbus.Client nimbus = nimbusClient.getClient();
         //String topoName = "ta1wc2P2Redis";
         ///String topoName = "ta1wcLoopRedis";
-        String topoName = "arwcRedis";
+        ///String topoName = "arwcRedis";
+        String topoName = "outdetResa";
         String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
 
         TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);

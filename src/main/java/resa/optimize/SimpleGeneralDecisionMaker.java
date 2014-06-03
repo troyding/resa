@@ -24,7 +24,7 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
     public void init(Map<String, Object> conf, Map<String, Integer> currAllocation, StormTopology rawTopology) {
         super.init(conf, currAllocation, rawTopology);
         historySize = ConfigUtil.getInt(conf, "resa.opt.win.history.size", 1);
-        currHistory = 0;
+        currHistory = ConfigUtil.getInt(conf, "resa.opt.win.history.size.ignore", 0);
         spoutAregatedData = new AggregatedData(rawTopology, historySize);
         boltAregatedData = new AggregatedData(rawTopology, historySize);
     }
@@ -38,7 +38,9 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
         // check history size. Ensure we have enough history data before we run the optimize function
         currHistory++;
         if (currHistory < historySize) {
-            LOG.info("currHistory < historySize, curr: " + currHistory + ", Size: " + historySize);
+            LOG.info("currHistory < historySize, curr: " + currHistory + ", Size: " + historySize
+                    + ", DataHistorySize: "
+                    + spoutAregatedData.compHistoryResults.entrySet().stream().findFirst().get().getValue().size());
             return null;
         } else {
             currHistory = historySize;
@@ -79,9 +81,10 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                     ///TODO: there we multiply 1/2 for this particular implementation
                     double tupleEmitRate = departRateHis * numberExecutor / 2.0;
 
-                    LOG.info("exec(name, count): (" + e.getKey() + "," + numberExecutor
+                    LOG.info("exec(ID, eNum): (" + e.getKey() + "," + numberExecutor
                             + "), tupleFinCnt: " + totalComplteTupleCnt + ", sumDur: " + totalDuration
-                            + ", componentSampelRate: " + componentSampelRate + ", tupleFinRate: " + tupleCompleteRate);
+                            + ", hisSize: " + e.getValue().size()
+                            + ", compSampelRate: " + componentSampelRate + ", tupleFinRate: " + tupleCompleteRate);
                     LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis
                             + ", SQarrRateHis: " + departRateHis);
                     LOG.info("avgCompleHis: " + avgCompleteHis + ", tupleEmitRate: " + tupleEmitRate);
@@ -113,7 +116,13 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
 
                     double i2oRatio = lambdaHis / spInfo.getTupleLeaveRateOnSQ();
                     int numberExecutor = currAllocation.get(e.getKey());
-                    LOG.info("exec(name, count): (" + e.getKey() + "," + numberExecutor + ")");
+
+                    double totalComplteTupleCnt = hisCarCombined.getCount();
+                    double totalDuration = hisCar.getDuration();
+
+                    LOG.info("exec(ID, eNum): (" + e.getKey() + "," + numberExecutor
+                            + "), tupleCompCnt: " + totalComplteTupleCnt
+                            + ", sumDur: " + totalDuration + ", hisSize: " + e.getValue().size());
                     LOG.info("avgSQLenHis: " + avgSendQLenHis + ",avgRQLenHis: " + avgRecvQLenHis + ", arrRateHis: "
                             + arrivalRateHis + ", avgServTimeHis(ms): " + avgServTimeHis);
                     LOG.info("rhoHis: " + rhoHis + ", lambdaHis: " + lambdaHis + ", muHis: " + muHis + ", ratio: " + i2oRatio);

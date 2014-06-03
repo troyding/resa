@@ -96,6 +96,10 @@ public class TopologyOptimizer {
             } else {
                 AggResultCalculator calculator = new AggResultCalculator(data, topoExecutors, rawTopology);
                 calculator.calCMVStat();
+                //TODO: (added by Tom) we need to make the maxProcessedDataSize as a configuration parameter.
+                // set a return value (count) from calculator.calCMVStat()
+                // if the count == maxProcessedDataSize (current is 500, say), we need to do something,
+                // since otherwise, the measurement data is too obsolete
                 Map<String, Integer> newAllocation = calcNewAllocation(calculator.getResults());
                 if (newAllocation != null && !newAllocation.equals(currAllocation)) {
                     LOG.info("Detected topology allocation changed, request rebalance....");
@@ -103,6 +107,10 @@ public class TopologyOptimizer {
                     LOG.info("new allc is " + newAllocation);
                     //TODO: tagged by Tom, in future, we need to improve
                     // this rebanlace step to make more stable and smooth
+                    // Idea 1) we can maintain an decision list, only when we have received continuous
+                    // decision with x times (x is the parameter), we will do rebalance (so that unstable oscillation
+                    // is removed)
+                    // Idea 2) we need to consider the expected gain (by consider the expected QoS gain) as a weight
                     requestRebalance(newAllocation);
                 }
             }
