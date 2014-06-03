@@ -8,6 +8,10 @@ import java.util.Map;
  */
 public class OptimizeDecision {
 
+    //TODO: add expected QoS for both minReqOptAllocation and currOptAllocation
+    //so that for later programme to optimize the rebalance behavior
+    // (e.g. consider expected rebalance gain vs. cost)
+
     public static enum Status {
         INFEASIBLE, FEASIBALE
     }

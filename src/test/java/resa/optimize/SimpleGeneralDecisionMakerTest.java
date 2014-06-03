@@ -210,7 +210,7 @@ public class SimpleGeneralDecisionMakerTest {
         String host = "192.168.0.30";
         int port = 6379;
         String queue = "ta1wc";
-        int maxLen = 500;
+        int maxLen = 5000;
 
         NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
         Nimbus.Client nimbus = nimbusClient.getClient();

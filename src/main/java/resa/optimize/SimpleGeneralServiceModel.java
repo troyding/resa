@@ -163,11 +163,8 @@ public class SimpleGeneralServiceModel {
                 totalMinReq++;
                 //TODO: causion, we need to add some codes to deal with infinite loop!
             } while (currTime > maxAllowedCompleteTime);
-            return currAllocation;
         }
-        //Else return null
-        //TODO: modified by Tom Fu, request for double check
-        return null;
+        return currAllocation;
     }
 
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
