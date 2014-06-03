@@ -13,7 +13,7 @@ import java.io.File;
  * This topology demonstrates Storm's stream groupings and multilang
  * capabilities.
  */
-public class TAExpServWCLoopRedis {
+public class TAExpServWCLoop {
 
     public static void main(String[] args) throws Exception {
 
@@ -38,24 +38,36 @@ public class TAExpServWCLoopRedis {
         int port = ConfigUtil.getInt(conf, "redis.port", 6379);
         String queue = (String) conf.get("a4-redis.queue");
 
+        int defaultTaskNum = ConfigUtil.getInt(conf, "a4-task.default", 10);
+
         builder.setSpout("sentenceSpout", new TASentenceSpout(host, port, queue),
                 ConfigUtil.getInt(conf, "a4-spout.parallelism", 1));
 
         double split_mu = ConfigUtil.getDouble(conf, "a4-split.mu", 1.0);
         builder.setBolt("split", new TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu)),
                 ConfigUtil.getInt(conf, "a4-split.parallelism", 1))
-                .setNumTasks(10)
+                .setNumTasks(defaultTaskNum)
                 .shuffleGrouping("sentenceSpout");
 
         double counter_mu = ConfigUtil.getDouble(conf, "a4-counter.mu", 1.0);
         builder.setBolt("counter",
                 new TAWordCounter2Path(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu),
-                ConfigUtil.getDouble(conf, "a4-loopback.prob", 0.0)),
+                        ConfigUtil.getDouble(conf, "a4-loopback.prob", 0.0)),
                 ConfigUtil.getInt(conf, "a4-counter.parallelism", 1))
-                .setNumTasks(10)
+                .setNumTasks(defaultTaskNum)
                 .shuffleGrouping("split").shuffleGrouping("counter", "Bolt-P");
 
-        resaConfig.registerMetricsConsumer(RedisMetricsCollector.class, null, 1);
+        if (ConfigUtil.getBoolean(conf, "a4-metric.resa", false)) {
+            resaConfig.addOptimizeSupport();
+            resaConfig.put(ResaConfig.REBALANCE_WAITING_SECS, 0);
+            System.out.println("ResaMetricsCollector is registered");
+        }
+
+        if (ConfigUtil.getBoolean(conf, "a4-metric.redis", true)) {
+            resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
+            System.out.println("RedisMetricsCollector is registered");
+        }
+
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 }

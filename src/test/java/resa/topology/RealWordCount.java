@@ -129,7 +129,7 @@ public class RealWordCount {
             System.out.println("ResaMetricsCollector is registered");
         }
 
-        if (ConfigUtil.getBoolean(conf, "arwc-metric.redis", false)){
+        if (ConfigUtil.getBoolean(conf, "arwc-metric.redis", true)){
             resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
             System.out.println("RedisMetricsCollector is registered");
         }
