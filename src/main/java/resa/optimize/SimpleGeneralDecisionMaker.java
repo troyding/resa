@@ -150,6 +150,6 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
         super.allocationChanged(newAllocation);
         spoutAregatedData.clear();
         boltAregatedData.clear();
-        currHistory = 0;
+        currHistory = ConfigUtil.getInt(conf, "resa.opt.win.history.size.ignore", 0);
     }
 }

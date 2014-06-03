@@ -125,7 +125,7 @@ class AggResultCalculator {
             parse(measuredData, car);
             count++;
         }
-        LOG.debug("calCMVStat, processed measuredData size: " + count);
+        LOG.info("calCMVStat, processed measuredData size: " + count);
     }
 
     public Map<String, AggResult[]> getResults() {
