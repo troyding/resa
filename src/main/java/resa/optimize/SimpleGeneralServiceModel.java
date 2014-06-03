@@ -137,9 +137,9 @@ public class SimpleGeneralServiceModel {
      * b) lowerBoundServiceTime > requiredQoS
      */
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
-                                                                 double maxAllowedCompleteTime,
-                                                                 double lowerBoundDelta,
-                                                                 double adjRatio) {
+                                                                           double maxAllowedCompleteTime,
+                                                                           double lowerBoundDelta,
+                                                                           double adjRatio) {
         double lowerBoundServiceTime = 0.0;
         int totalMinReq = 0;
         for (Map.Entry<String, ServiceNode> e : components.entrySet()) {
@@ -150,7 +150,7 @@ public class SimpleGeneralServiceModel {
         }
 
         Map<String, Integer> currAllocation = null;
-        if (lowerBoundServiceTime + lowerBoundDelta < maxAllowedCompleteTime) {
+        if (lowerBoundServiceTime * adjRatio + lowerBoundDelta < maxAllowedCompleteTime) {
             double currTime;
             do {
                 currAllocation = suggestAllocationGeneralTop(components, totalMinReq);
@@ -161,18 +161,22 @@ public class SimpleGeneralServiceModel {
                         + currTime * 1000.0 + ", totalMinReqQoS: " + totalMinReq);
 
                 totalMinReq++;
+                //TODO: causion, we need to add some codes to deal with infinite loop!
             } while (currTime > maxAllowedCompleteTime);
+            return currAllocation;
         }
-        return currAllocation;
+        //Else return null
+        //TODO: modified by Tom Fu, request for double check
+        return null;
     }
 
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
-                                                                 double maxAllowedCompleteTime) {
+                                                                           double maxAllowedCompleteTime) {
         return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, 1.0);
     }
 
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
-                                                                 double maxAllowedCompleteTime, double adjRatio) {
+                                                                           double maxAllowedCompleteTime, double adjRatio) {
         return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, adjRatio);
     }
 
