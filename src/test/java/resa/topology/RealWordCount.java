@@ -114,7 +114,11 @@ public class RealWordCount {
             int port = ((Number) conf.get("redis.port")).intValue();
             String queue = (String) conf.get("redis.queue");
             builder.setSpout("say", new TASentenceSpout(host, port, queue),
-                    ConfigUtil.getInt(conf, "arwc-spout.parallelism", 1));
+                    ConfigUtil.getInt(conf, "arwc-spout.parallelism", 1))
+                    .setNumTasks(defaultTaskNum);
+            //TODO: in the testing case, the sending rate is up-bounded to 2100 tuples/sec.
+            //The reason is not at the spout site (5 executors and 1 executors is the same)
+            //Need to check the DataSender part!
         }
         builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "arwc-split.parallelism", 1))
                 .setNumTasks(defaultTaskNum)

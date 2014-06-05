@@ -204,7 +204,7 @@ public class SimpleGeneralDecisionMakerTest {
         conf.put("resa.opt.win.history.size.ignore", -1);
         conf.put("resa.comp.sample.rate", 1.0);
 
-        int allewedExecutorNum = 7;
+        int allewedExecutorNum = 30;
         conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, allewedExecutorNum);
 
         String host = "192.168.0.30";
@@ -217,7 +217,8 @@ public class SimpleGeneralDecisionMakerTest {
         //String topoName = "ta1wc2P2Redis";
         ///String topoName = "ta1wcLoopRedis";
         ///String topoName = "arwcRedis";
-        String topoName = "outdetResa";
+        ///String topoName = "outdetResa";
+        String topoName = "rwc";
         String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
 
         TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);

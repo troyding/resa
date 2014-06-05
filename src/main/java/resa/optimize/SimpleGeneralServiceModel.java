@@ -114,9 +114,26 @@ public class SimpleGeneralServiceModel {
                         maxDiffCid = cid;
                     }
                 }
-                int newAllocate = retVal.compute(maxDiffCid, (k, count) -> count + 1);
-                LOG.info((i + 1) + " of " + remainCount + ", assigned to " + maxDiffCid + ", newAllocate: "
-                        + newAllocate);
+                if (maxDiffCid != null) {
+                    int newAllocate = retVal.compute(maxDiffCid, (k, count) -> count + 1);
+                    LOG.info((i + 1) + " of " + remainCount + ", assigned to " + maxDiffCid + ", newAllocate: "
+                            + newAllocate);
+                } else {
+                    LOG.info("Null MaxDiffCid returned in " + (i + 1) + " of " + remainCount);
+                    for (Map.Entry<String, ServiceNode> e : components.entrySet()) {
+                        String cid = e.getKey();
+                        ServiceNode sn = e.getValue();
+                        int currentAllocated = retVal.get(cid);
+
+                        double beforeAddT = sn.estErlangT(currentAllocated);
+                        double afterAddT = sn.estErlangT(currentAllocated + 1);
+
+                        LOG.info(cid + ", currentAllocated: " + currentAllocated
+                                + ", beforeAddT: " + beforeAddT
+                                + ", afterAddT: " + afterAddT);
+                    }
+                    break;
+                }
             }
         } else {
             return null;
