@@ -6,9 +6,9 @@ import backtype.storm.task.IOutputCollector;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichBolt;
-import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.Utils;
+import resa.topology.DelegatedBolt;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 import resa.util.Sampler;
@@ -20,7 +20,7 @@ import java.util.Map;
 /**
  * Created by ding on 14-1-27.
  */
-public class MeasurableBolt implements IRichBolt {
+public class MeasurableBolt extends DelegatedBolt {
 
     private class MeasurableOutputCollector extends OutputCollector {
 
@@ -52,14 +52,13 @@ public class MeasurableBolt implements IRichBolt {
     }
 
     private transient CMVMetric executeMetric;
-    private IRichBolt delegate;
     private Sampler sampler;
     private transient MultiCountMetric emitMetric;
     private transient MeasurableOutputCollector measurableCollector;
     private long lastMetricsSent;
 
     public MeasurableBolt(IRichBolt delegate) {
-        this.delegate = delegate;
+        super(delegate);
     }
 
     @Override
@@ -71,7 +70,7 @@ public class MeasurableBolt implements IRichBolt {
         context.registerMetric(MetricNames.DURATION, this::getMetricsDuration, interval);
         sampler = new Sampler(ConfigUtil.getDouble(conf, ResaConfig.COMP_SAMPLE_RATE, 0.05));
         measurableCollector = new MeasurableOutputCollector(outputCollector);
-        delegate.prepare(conf, context, measurableCollector);
+        super.prepare(conf, context, measurableCollector);
     }
 
     private long getMetricsDuration() {
@@ -88,13 +87,13 @@ public class MeasurableBolt implements IRichBolt {
             // enable emit sample
             measurableCollector.setEmitSample(true);
             long arrivalTime = System.nanoTime();
-            delegate.execute(tuple);
+            super.execute(tuple);
             elapse = System.nanoTime() - arrivalTime;
         } else {
             elapse = -1;
             // disable emit sample
             measurableCollector.setEmitSample(false);
-            delegate.execute(tuple);
+            super.execute(tuple);
         }
         // avoid numerical overflow
         if (elapse > 0) {
@@ -103,18 +102,4 @@ public class MeasurableBolt implements IRichBolt {
         }
     }
 
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        delegate.declareOutputFields(declarer);
-    }
-
-    @Override
-    public void cleanup() {
-        delegate.cleanup();
-    }
-
-    @Override
-    public Map<String, Object> getComponentConfiguration() {
-        return delegate.getComponentConfiguration();
-    }
 }

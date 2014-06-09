@@ -7,8 +7,8 @@ import backtype.storm.metric.api.MultiCountMetric;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichSpout;
-import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.utils.Utils;
+import resa.topology.DelegatedSpout;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 import resa.util.Sampler;
@@ -21,7 +21,7 @@ import java.util.Map;
  * <p>
  * Created by ding on 14-4-8.
  */
-public class MeasurableSpout implements IRichSpout {
+public class MeasurableSpout extends DelegatedSpout {
 
     private class MeasurableMsgId {
         final String stream;
@@ -50,14 +50,13 @@ public class MeasurableSpout implements IRichSpout {
         }
     }
 
-    private IRichSpout delegate;
     private transient CMVMetric completeMetric;
     private Sampler sampler;
     private transient MultiCountMetric emitMetric;
     private long lastMetricsSent;
 
     public MeasurableSpout(IRichSpout delegate) {
-        this.delegate = delegate;
+        super(delegate);
     }
 
     private long getMetricsDuration() {
@@ -76,7 +75,7 @@ public class MeasurableSpout implements IRichSpout {
         context.registerMetric(MetricNames.DURATION, this::getMetricsDuration, interval);
         sampler = new Sampler(ConfigUtil.getDouble(conf, ResaConfig.COMP_SAMPLE_RATE, 0.05));
         context.addTaskHook(new SpoutHook());
-        delegate.open(conf, context, new SpoutOutputCollector(collector) {
+        super.open(conf, context, new SpoutOutputCollector(collector) {
 
             @Override
             public List<Integer> emit(String streamId, List<Object> tuple, Object messageId) {
@@ -101,47 +100,18 @@ public class MeasurableSpout implements IRichSpout {
         });
     }
 
-    @Override
-    public void close() {
-        delegate.close();
-    }
-
-    @Override
-    public void activate() {
-        delegate.activate();
-    }
-
-    @Override
-    public void deactivate() {
-        delegate.deactivate();
-    }
-
-    @Override
-    public void nextTuple() {
-        delegate.nextTuple();
-    }
-
     private Object getUserMsgId(Object msgId) {
         return msgId != null ? ((MeasurableMsgId) msgId).msgId : msgId;
     }
 
     @Override
     public void ack(Object msgId) {
-        delegate.ack(getUserMsgId(msgId));
+        super.ack(getUserMsgId(msgId));
     }
 
     @Override
     public void fail(Object msgId) {
-        delegate.fail(getUserMsgId(msgId));
+        super.fail(getUserMsgId(msgId));
     }
 
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        delegate.declareOutputFields(declarer);
-    }
-
-    @Override
-    public Map<String, Object> getComponentConfiguration() {
-        return delegate.getComponentConfiguration();
-    }
 }
