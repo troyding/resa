@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 
 /**
@@ -50,9 +51,38 @@ public class DataSenderWithTS {
         }
     }
 
+    public void send2Queue(Path inputFile, LongSupplier sleep, IntSupplier sendCnt) throws IOException {
+        Jedis jedis = new Jedis(host, port);
+        int counter = 0;
+        try (BufferedReader reader = Files.newBufferedReader(inputFile)) {
+            String line = null;
+            int toSendCnt = 0;
+            while (line != null || (line = reader.readLine()) != null) {
+                if (toSendCnt > 0) {
+                    toSendCnt--;
+                } else {
+                    long ms = sleep.getAsLong();
+                    if (ms > 0) {
+                        Utils.sleep(ms);
+                    }
+                    toSendCnt = sendCnt.getAsInt();
+                }
+
+                if (jedis.llen(queueName) < maxPaddingSize) {
+                    String data = counter++ + "|" + System.currentTimeMillis() + "|" + line;
+                    jedis.rpush(queueName, data);
+                    line = null;
+                }
+            }
+        } finally {
+            jedis.quit();
+        }
+    }
+
     public static void main(String[] args) throws IOException {
-        if (args.length < 4) {
+        if (args.length < 6) {
             System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize> " +
+                    "<rateForSplitThreash> <rateForSplit> " +
                     "[-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
             return;
         }
@@ -61,28 +91,47 @@ public class DataSenderWithTS {
         Path dataFile = Paths.get(args[1]);
         int maxPadding = Integer.parseInt(args[2]);
         sender.maxPaddingSize = maxPadding > 0 ? maxPadding : Integer.MAX_VALUE;
-        switch (args[3].substring(1)) {
+        int batchRateThreash = Integer.parseInt(args[3]);
+        int batchRate = Integer.parseInt(args[4]);
+        switch (args[5].substring(1)) {
             case "deter":
-                long sleep = (long) (1000 / Float.parseFloat(args[4]));
-                sender.send2Queue(dataFile, () -> sleep);
+                double rate = Float.parseFloat(args[6]);
+                if (rate < batchRateThreash) {
+                    System.out.println("case Det, rate: " + rate);
+                    sender.send2Queue(dataFile, () -> (long) (1000 / rate));
+                } else {
+                    double meanBatchSize = rate / batchRate;
+                    System.out.println("case Det, rate: " + rate + "meanBatchSize: " + meanBatchSize);
+                    sender.send2Queue(dataFile, () -> (long) (1000 / batchRate),
+                            ///() -> (int) (Math.random() * 2.0 * meanBatchSize));
+                            () -> (int) meanBatchSize);
+                }
                 break;
             case "poison":
-                double lambda = Float.parseFloat(args[4]);
-                sender.send2Queue(dataFile, () -> (long) (-Math.log(Math.random()) * 1000 / lambda));
+                double lambda = Float.parseFloat(args[6]);
+                if (lambda < batchRateThreash) {
+                    System.out.println("case Poison, lambda: " + lambda);
+                    sender.send2Queue(dataFile, () -> (long) (-Math.log(Math.random()) * 1000 / lambda));
+                } else {
+                    double meanBatchSize = lambda / batchRate;
+                    System.out.println("case Poison, lambda: " + lambda + "meanBatchSize: " + meanBatchSize);
+                    sender.send2Queue(dataFile, () -> (long) (-Math.log(Math.random()) * 1000 / batchRate),
+                            () -> (int) (Math.random() * 2.0 * meanBatchSize));
+                }
                 break;
             case "uniform":
-                if (args.length < 6) {
+                if (args.length < 8) {
                     System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize>" +
                             " [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
                     return;
                 }
-                double left = Float.parseFloat(args[4]);
-                double right = Float.parseFloat(args[5]);
+                double left = Float.parseFloat(args[6]);
+                double right = Float.parseFloat(args[7]);
                 sender.send2Queue(dataFile, () -> (long) (1000 / (Math.random() * (right - left) + left)));
             default:
-                System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize>" +
-                        " [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
-                ///sender.send2Queue(dataFile, () -> 0);
+                System.out.println("usage: DataSender <confFile> <inputFile> <maxPaddingSize> " +
+                        "<rateForSplitThreash> <rateForSplit> " +
+                        "[-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
                 break;
         }
         System.out.println("end sender");
