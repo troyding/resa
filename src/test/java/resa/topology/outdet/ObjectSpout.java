@@ -1,8 +1,9 @@
-package resa.topology;
+package resa.topology.outdet;
 
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
+import resa.topology.RedisQueueSpout;
 
 import java.util.Arrays;
 import java.util.Collections;

@@ -2,9 +2,13 @@ package resa.topology.fp;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
+import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
-import storm.resa.util.ConfigUtil;
+import resa.metrics.RedisMetricsCollector;
+import resa.topology.ResaTopologyBuilder;
+import resa.util.ConfigUtil;
+import resa.util.ResaConfig;
 
 import java.io.File;
 
@@ -20,14 +24,21 @@ public class FrequentPatternTopology implements Constant {
         if (conf == null) {
             throw new RuntimeException("cannot find conf file " + args[1]);
         }
+        ResaConfig resaConfig = ResaConfig.create();
+        resaConfig.putAll(conf);
 
-        LocalCluster cluster = new LocalCluster();
+        TopologyBuilder builder = new ResaTopologyBuilder();
 
-        TopologyBuilder builder = new TopologyBuilder();
+        int numWorkers = ConfigUtil.getInt(conf, "fp-worker.count", 1);
+        int numAckers = ConfigUtil.getInt(conf, "fp-acker.count", 1);
+
+        resaConfig.setNumWorkers(numWorkers);
+        resaConfig.setNumAckers(numAckers);
 
         String host = (String) conf.get("redis.host");
-        int port = ((Number) conf.get("redis.port")).intValue();
+        int port = ConfigUtil.getInt(conf, "redis.port", 6379);
         String queue = (String) conf.get("redis.queue");
+
         builder.setSpout("input", new SentenceSpout(host, port, queue), ConfigUtil.getInt(conf, "fp.spout.parallelism", 1));
 
         builder.setBolt("generator", new PatternGenerator(), ConfigUtil.getInt(conf, "fp.generator.parallelism", 1))
@@ -42,10 +53,18 @@ public class FrequentPatternTopology implements Constant {
                 .fieldsGrouping("detector", REPORT_STREAM, new Fields(PATTERN_FIELD))
                 .setNumTasks(ConfigUtil.getInt(conf, "fp.reporter.tasks", 1));
 
-        ///StormSubmitter.submitTopology(args[0], conf, builder.createTopology());
+        if (ConfigUtil.getBoolean(conf, "fp.metric.resa", false)) {
+            resaConfig.addOptimizeSupport();
+            resaConfig.put(ResaConfig.REBALANCE_WAITING_SECS, 0);
+            System.out.println("ResaMetricsCollector is registered");
+        }
 
-        ///conf.setDebug(true);
-        cluster.submitTopology("fp", conf, builder.createTopology());
+        if (ConfigUtil.getBoolean(conf, "fp.metric.redis", true)) {
+            resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
+            System.out.println("RedisMetricsCollector is registered");
+        }
+
+        StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 
 }

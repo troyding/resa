@@ -17,6 +17,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import resa.metrics.RedisMetricsCollector;
 import resa.migrate.Persistable;
+import resa.topology.TopologyWithSleepBolt.TASentenceSpout;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 

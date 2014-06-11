@@ -1,10 +1,11 @@
-package resa.topology;
+package resa.topology.TopologyWithSleepBolt;
 
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
+import resa.topology.RedisQueueSpout;
 
 import java.util.Map;
 

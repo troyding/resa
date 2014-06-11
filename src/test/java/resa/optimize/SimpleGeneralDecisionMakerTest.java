@@ -12,6 +12,8 @@ import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import org.junit.Test;
 import resa.topology.RandomSentenceSpout;
+import resa.topology.TopologyWithSleepBolt.TASplitSentence;
+import resa.topology.TopologyWithSleepBolt.TAWordCounter;
 import resa.util.ResaConfig;
 import resa.util.TopologyHelper;
 
@@ -39,11 +41,11 @@ public class SimpleGeneralDecisionMakerTest {
         builder.setSpout("sentenceSpout", spout, 1);
 
         double split_mu = 10.0;
-        IRichBolt splitBolt = new resa.topology.TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu));
+        IRichBolt splitBolt = new TASplitSentence(() -> (long) (-Math.log(Math.random()) * 1000.0 / split_mu));
         builder.setBolt("split", splitBolt, 4).shuffleGrouping("sentenceSpout");
 
         double counter_mu = 5.0;
-        IRichBolt wcBolt = new resa.topology.TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu));
+        IRichBolt wcBolt = new TAWordCounter(() -> (long) (-Math.log(Math.random()) * 1000.0 / counter_mu));
         builder.setBolt("counter", wcBolt, 2).shuffleGrouping("split");
         t2c.clear();
         t2c.put(5, "sentenceSpout");
@@ -204,7 +206,7 @@ public class SimpleGeneralDecisionMakerTest {
         conf.put("resa.opt.win.history.size.ignore", -1);
         conf.put("resa.comp.sample.rate", 1.0);
 
-        int allewedExecutorNum = 30;
+        int allewedExecutorNum = 7;
         conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, allewedExecutorNum);
 
         String host = "192.168.0.30";
@@ -218,7 +220,8 @@ public class SimpleGeneralDecisionMakerTest {
         ///String topoName = "ta1wcLoopRedis";
         ///String topoName = "arwcRedis";
         ///String topoName = "outdetResa";
-        String topoName = "rwc";
+        ///String topoName = "rwc";
+        String topoName = "fpt";
         String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
 
         TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);

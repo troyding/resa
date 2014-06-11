@@ -1,9 +1,10 @@
-package resa.topology;
+package resa.topology.TopologyWithSleepBolt;
 
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
 import resa.metrics.RedisMetricsCollector;
+import resa.topology.ResaTopologyBuilder;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 

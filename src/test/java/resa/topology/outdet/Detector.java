@@ -7,8 +7,6 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
-import resa.topology.ObjectSpout;
-import resa.topology.Projection;
 
 import java.util.Arrays;
 import java.util.BitSet;

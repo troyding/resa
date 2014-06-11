@@ -1,18 +1,14 @@
-package resa.topology;
+package resa.topology.TopologyWithSleepBolt;
 
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
-import resa.metrics.FilteredMetricsCollector;
 import resa.metrics.RedisMetricsCollector;
+import resa.topology.ResaTopologyBuilder;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * This topology demonstrates Storm's stream groupings and multilang

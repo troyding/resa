@@ -1,4 +1,4 @@
-package resa.topology;
+package resa.topology.TopologyWithSleepBolt;
 
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;

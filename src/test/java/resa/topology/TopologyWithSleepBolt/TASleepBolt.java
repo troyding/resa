@@ -1,4 +1,4 @@
-package resa.topology;
+package resa.topology.TopologyWithSleepBolt;
 
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;

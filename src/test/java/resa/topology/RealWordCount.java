@@ -10,6 +10,7 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import resa.metrics.RedisMetricsCollector;
+import resa.topology.TopologyWithSleepBolt.TASentenceSpout;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 

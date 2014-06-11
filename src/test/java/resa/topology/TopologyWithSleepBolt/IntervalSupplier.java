@@ -1,4 +1,4 @@
-package resa.topology;
+package resa.topology.TopologyWithSleepBolt;
 
 import java.io.Serializable;
 

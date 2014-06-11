@@ -1,8 +1,8 @@
-package resa.topology.fp;
+package resa.tools;
 
 import backtype.storm.utils.Utils;
 import redis.clients.jedis.Jedis;
-import storm.resa.util.ConfigUtil;
+import resa.util.ConfigUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,13 +17,13 @@ import java.util.function.LongSupplier;
 /**
  * Created by ding on 14-3-18.
  */
-public class DataSenderAdd {
+public class DataSenderRemove {
 
     private String host;
     private int port;
     private String queueName;
 
-    public DataSenderAdd(Map<String, Object> conf) {
+    public DataSenderRemove(Map<String, Object> conf) {
         this.host = (String) conf.get("redis.host");
         this.port = ((Number) conf.get("redis.port")).intValue();
         this.queueName = (String) conf.get("redis.queue");
@@ -39,7 +39,7 @@ public class DataSenderAdd {
                     Utils.sleep(ms);
                 }
                 //String data = counter.getAndIncrement() + "|" + System.currentTimeMillis() + "|" + line;
-                String data = "+" + line;
+                String data = "-" + line;
                 jedis.rpush(queueName, data);
             });
         } finally {
@@ -52,7 +52,7 @@ public class DataSenderAdd {
             System.out.println("usage: DataSender <confFile> <inputFile> [-deter <rate>] [-poison <lambda>] [-uniform <left> <right>]");
             return;
         }
-        DataSenderAdd sender = new DataSenderAdd(ConfigUtil.readConfig(new File(args[0])));
+        DataSenderRemove sender = new DataSenderRemove(ConfigUtil.readConfig(new File(args[0])));
         System.out.println("start sender");
         Path dataFile = Paths.get(args[1]);
         switch (args[2].substring(1)) {

@@ -5,11 +5,7 @@ import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
 import resa.metrics.RedisMetricsCollector;
-import resa.topology.ObjectSpout;
-import resa.topology.Projection;
 import resa.topology.ResaTopologyBuilder;
-import resa.topology.outdet.Detector;
-import resa.topology.outdet.Updater;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
