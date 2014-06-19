@@ -198,6 +198,18 @@ public class SimpleGeneralServiceModel {
         return Objects.requireNonNull(allocation).values().stream().mapToInt(i -> i).sum();
     }
 
+
+    /**
+     *
+     * @param queueingNetwork
+     * @param realLatencyMilliSec
+     * @param targetQoSMilliSec
+     * @param currBoltAllocation
+     * @param maxAvailable4Bolt
+     * @return status indicates whether the demanded QoS can be achieved or not
+     * minReqAllocaiton, the minimum required resource (under optimized allocation) which can satisfy QoS
+     * after: the optimized allocation under given maxAvailable4Bolt
+     */
     public static OptimizeDecision checkOptimized(Map<String, ServiceNode> queueingNetwork, double realLatencyMilliSec,
                                                   double targetQoSMilliSec, Map<String, Integer> currBoltAllocation,
                                                   int maxAvailable4Bolt) {
