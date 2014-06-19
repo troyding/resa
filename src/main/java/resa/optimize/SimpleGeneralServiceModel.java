@@ -116,7 +116,7 @@ public class SimpleGeneralServiceModel {
                 }
                 if (maxDiffCid != null) {
                     int newAllocate = retVal.compute(maxDiffCid, (k, count) -> count + 1);
-                    LOG.info((i + 1) + " of " + remainCount + ", assigned to " + maxDiffCid + ", newAllocate: "
+                    LOG.debug((i + 1) + " of " + remainCount + ", assigned to " + maxDiffCid + ", newAllocate: "
                             + newAllocate);
                 } else {
                     LOG.info("Null MaxDiffCid returned in " + (i + 1) + " of " + remainCount);
@@ -132,7 +132,7 @@ public class SimpleGeneralServiceModel {
                                 + ", beforeAddT: " + beforeAddT
                                 + ", afterAddT: " + afterAddT);
                     }
-                    break;
+                    return retVal;
                 }
             }
         } else {

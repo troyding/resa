@@ -206,7 +206,7 @@ public class SimpleGeneralDecisionMakerTest {
         conf.put("resa.opt.win.history.size.ignore", -1);
         conf.put("resa.comp.sample.rate", 1.0);
 
-        int allewedExecutorNum = 7;
+        int allewedExecutorNum = 26;
         conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, allewedExecutorNum);
 
         String host = "192.168.0.30";
