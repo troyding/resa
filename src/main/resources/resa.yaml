@@ -20,4 +20,7 @@ resa.optimize.interval.secs: 30
 resa.optimize.analyzer.class: resa.optimize.SimpleModelDecisionMaker
 resa.topology.allowed.executor.num: -1
 
+####migrate
+resa.comp.checkpoint.interval.sec: 30
+
 

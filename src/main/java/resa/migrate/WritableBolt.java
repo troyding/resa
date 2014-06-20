@@ -12,6 +12,7 @@ import com.esotericsoftware.kryo.io.Output;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import resa.topology.DelegatedBolt;
+import resa.util.ConfigUtil;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -50,7 +51,8 @@ public class WritableBolt extends DelegatedBolt {
             kryo = null;
             LOG.info("No persistable bolt is found");
         }
-        context.registerMetric("serialized", this::getSerializedSize, 30);
+        context.registerMetric("serialized", this::createCheckpointAndGetSize,
+                ConfigUtil.getInt(conf, "resa.comp.checkpoint.interval.sec", 30));
     }
 
     private Persistable getPersistableObject() {
@@ -77,19 +79,16 @@ public class WritableBolt extends DelegatedBolt {
         return null;
     }
 
-    private Long getSerializedSize() {
+    private Long createCheckpointAndGetSize() {
         Long size = null;
         if (persistableBolt != null) {
             Path file = Paths.get(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString());
             try (Output out = new Output(Files.newOutputStream(file))) {
                 persistableBolt.save(kryo, out);
-            } catch (IOException e) {
-                LOG.warn("Save bolt failed", e);
-            }
-            try {
                 size = Files.size(file);
                 Files.deleteIfExists(file);
             } catch (IOException e) {
+                LOG.warn("Save bolt failed", e);
             }
         }
         return size;

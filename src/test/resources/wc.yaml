@@ -20,7 +20,7 @@ topology.workers: 3
 ##redis config if redis spout is enabled
 redis.host: "192.168.0.30"
 redis.port: 6379
-redis.queue: "sentences"
+redis.queue: "tweets"
 
 # maximum amount of time a message has to complete before it's considered failed
 topology.debug: false
@@ -41,3 +41,10 @@ counter.parallelism: 2
 
 resa.metric.redis.host: "192.168.0.30"
 resa.metric.redis.port: 6379
+resa.metric.redis.queue-name: "wc-metrics"
+
+resa.metric.approved.names:
+  - "complete-latency"
+  - "execute"
+  - "emit"
+  - "serialized"

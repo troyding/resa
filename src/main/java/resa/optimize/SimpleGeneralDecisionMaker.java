@@ -30,7 +30,7 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
     }
 
     @Override
-    public Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
+    public OptimizeDecision make(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
                 .forEach(e -> spoutAregatedData.putResult(e.getKey(), e.getValue()));
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
@@ -137,12 +137,15 @@ public class SimpleGeneralDecisionMaker extends DecisionMaker {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         OptimizeDecision optimizeDecision = SimpleGeneralServiceModel.checkOptimized(queueingNetwork,
                 spInfo.getRealLatencyMilliSec(), targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
-        Map<String, Integer> ret = new HashMap<>(currAllocation);
+        Map<String, Integer> retCurrAllocation = new HashMap<>(currAllocation);
         // merge the optimized decision into source allocation
-        ret.putAll(optimizeDecision.currOptAllocation);
-        LOG.info(currAllocation + "-->" + ret);
+        retCurrAllocation.putAll(optimizeDecision.currOptAllocation);
+        LOG.info(currAllocation + "-->" + retCurrAllocation);
         LOG.info("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
-        return ret;
+        Map<String, Integer> retMinReqAllocation = new HashMap<>(currAllocation);
+        // merge the optimized decision into source allocation
+        retMinReqAllocation.putAll(optimizeDecision.minReqOptAllocation);
+        return new OptimizeDecision(optimizeDecision.status, retMinReqAllocation, retCurrAllocation);
     }
 
     @Override

@@ -36,6 +36,6 @@ public abstract class DecisionMaker {
         this.currAllocation = newAllocation;
     }
 
-    public abstract Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors);
+    public abstract OptimizeDecision make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors);
 
 }

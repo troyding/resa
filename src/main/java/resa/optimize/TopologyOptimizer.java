@@ -129,12 +129,13 @@ public class TopologyOptimizer {
         private Map<String, Integer> calcNewAllocation(Map<String, AggResult[]> data) {
             int maxExecutors = topologyMaxExecutors == -1 ? Math.max(ConfigUtil.getInt(conf, Config.TOPOLOGY_WORKERS, 1),
                     getNumWorkers(currAllocation)) * maxExecutorsPerWorker : topologyMaxExecutors;
-            Map<String, Integer> decision = null;
+            Map<String, Integer> ret = null;
             try {
-                decision = decisionMaker.make(data, maxExecutors);
+                OptimizeDecision decision = decisionMaker.make(data, maxExecutors);
+                ret = decision.currOptAllocation;
             } catch (Throwable e) {
             }
-            return decision;
+            return ret;
         }
     }
 

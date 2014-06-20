@@ -2,6 +2,7 @@ package resa.topology;
 
 import resa.optimize.AggResult;
 import resa.optimize.DecisionMaker;
+import resa.optimize.OptimizeDecision;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,7 +15,7 @@ import java.util.Map;
 public class FakeDecisionMaker extends DecisionMaker {
 
     @Override
-    public Map<String, Integer> make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors) {
+    public OptimizeDecision make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors) {
         Map<String, Integer> ret = new HashMap<>(currAllocation);
         ArrayList<Map.Entry<String, Integer>> tmp = new ArrayList<>(ret.entrySet());
         Collections.shuffle(tmp);
@@ -23,6 +24,6 @@ public class FakeDecisionMaker extends DecisionMaker {
         int newThreads = System.currentTimeMillis() % 2 == 0 ? old + 1 : old - 1;
         entry.setValue(newThreads);
         System.out.println(entry.getKey() + ": Old is " + old + ", new is " + newThreads);
-        return ret;
+        return new OptimizeDecision(OptimizeDecision.Status.FEASIBALE, ret, ret);
     }
 }
