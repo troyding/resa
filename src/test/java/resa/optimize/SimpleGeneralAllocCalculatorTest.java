@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 /**
  * Created by Tom.fu on 5/5/2014.
  */
-public class SimpleGeneralDecisionMakerTest {
+public class SimpleGeneralAllocCalculatorTest {
 
     private TopologyBuilder builder = new TopologyBuilder();
     private Map<String, Object> conf = ResaConfig.create(true);
@@ -63,7 +63,7 @@ public class SimpleGeneralDecisionMakerTest {
         currAllocation.put("split", 4);
         currAllocation.put("sentenceSpout", 1);
 
-        SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
+        SimpleGeneralAllocCalculator smdm = new SimpleGeneralAllocCalculator();
         smdm.init(conf, currAllocation, builder.createTopology());
 
         String host = "192.168.0.31";
@@ -165,7 +165,7 @@ public class SimpleGeneralDecisionMakerTest {
                 .collect(Collectors.groupingBy(e -> e.get_component_id(),
                         Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
 
-        SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
+        SimpleGeneralAllocCalculator smdm = new SimpleGeneralAllocCalculator();
         smdm.init(conf, currAllocation, gtc.getRawTopology());
 
         Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
@@ -230,7 +230,7 @@ public class SimpleGeneralDecisionMakerTest {
                 .collect(Collectors.groupingBy(e -> e.get_component_id(),
                         Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
 
-        SimpleGeneralDecisionMaker smdm = new SimpleGeneralDecisionMaker();
+        SimpleGeneralAllocCalculator smdm = new SimpleGeneralAllocCalculator();
         smdm.init(conf, currAllocation, nimbus.getUserTopology(topoId));
 
 

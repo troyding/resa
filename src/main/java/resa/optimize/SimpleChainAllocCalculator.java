@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
 /**
  * Created by ding on 14-4-30.
  */
-public class SimpleChainDecisionMaker extends DecisionMaker {
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleChainDecisionMaker.class);
+public class SimpleChainAllocCalculator extends AllocCalculator {
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleChainAllocCalculator.class);
     private AggregatedData spoutAregatedData;
     private AggregatedData boltAregatedData;
     private int historySize;
@@ -30,7 +30,7 @@ public class SimpleChainDecisionMaker extends DecisionMaker {
     }
 
     @Override
-    public OptimizeDecision make(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
+    public AllocResult make(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
                 .forEach(e -> spoutAregatedData.putResult(e.getKey(), e.getValue()));
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
@@ -90,17 +90,17 @@ public class SimpleChainDecisionMaker extends DecisionMaker {
         Map<String, Integer> boltAllocation = currAllocation.entrySet().stream()
                 .filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        OptimizeDecision optimizeDecision = SimpleGeneralServiceModel.checkOptimized(queueingNetwork, avgCompleteHis,
+        AllocResult allocResult = SimpleGeneralServiceModel.checkOptimized(queueingNetwork, avgCompleteHis,
                 targetQoSMs, boltAllocation, maxThreadAvailable4Bolt);
         Map<String, Integer> retCurrAllocation = new HashMap<>(currAllocation);
         // merge the optimized decision into source allocation
-        retCurrAllocation.putAll(optimizeDecision.currOptAllocation);
+        retCurrAllocation.putAll(allocResult.currOptAllocation);
         LOG.info(currAllocation + "-->" + retCurrAllocation);
-        LOG.info("minReq: {} " + optimizeDecision.minReqOptAllocation + ", status: " + optimizeDecision.status);
+        LOG.info("minReq: {} " + allocResult.minReqOptAllocation + ", status: " + allocResult.status);
         Map<String, Integer> retMinReqAllocation = new HashMap<>(currAllocation);
         // merge the optimized decision into source allocation
-        retMinReqAllocation.putAll(optimizeDecision.minReqOptAllocation);
-        return new OptimizeDecision(optimizeDecision.status, retMinReqAllocation, retCurrAllocation);
+        retMinReqAllocation.putAll(allocResult.minReqOptAllocation);
+        return new AllocResult(allocResult.status, retMinReqAllocation, retCurrAllocation);
     }
 
     @Override

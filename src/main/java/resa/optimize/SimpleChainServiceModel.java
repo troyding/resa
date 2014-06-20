@@ -180,7 +180,7 @@ public class SimpleChainServiceModel {
         return Objects.requireNonNull(allocation).values().stream().mapToInt(i -> i).sum();
     }
 
-    public static OptimizeDecision checkOptimized(Map<String, ServiceNode> queueingNetwork, double realLatencyMilliSec,
+    public static AllocResult checkOptimized(Map<String, ServiceNode> queueingNetwork, double realLatencyMilliSec,
                                                   double targetQoSMilliSec, Map<String, Integer> currBoltAllocation,
                                                   int maxAvailable4Bolt) {
 
@@ -194,13 +194,13 @@ public class SimpleChainServiceModel {
         LOG.info("Find out minReqAllocation under QoS requirement.");
         Map<String, Integer> minReqAllocation = getMinReqServerAllocation(queueingNetwork, targetQoSMilliSec / 1000.0,
                 underEstimateRatio);
-        OptimizeDecision.Status status = OptimizeDecision.Status.FEASIBALE;
+        AllocResult.Status status = AllocResult.Status.FEASIBALE;
         if (minReqAllocation == null) {
-            status = OptimizeDecision.Status.INFEASIBLE;
+            status = AllocResult.Status.INFEASIBLE;
         }
         LOG.info("Find out best allocation given available executors.");
         Map<String, Integer> after = suggestAllocation(queueingNetwork, maxAvailable4Bolt);
-        return new OptimizeDecision(status, minReqAllocation, after);
+        return new AllocResult(status, minReqAllocation, after);
     }
 
     /**

@@ -9,7 +9,7 @@ import java.util.Map;
  * them synchronized.
  * Created by ding on 14-4-30.
  */
-public abstract class DecisionMaker {
+public abstract class AllocCalculator {
 
     protected StormTopology rawTopology;
     protected Map<String, Object> conf;
@@ -36,6 +36,6 @@ public abstract class DecisionMaker {
         this.currAllocation = newAllocation;
     }
 
-    public abstract OptimizeDecision make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors);
+    public abstract AllocResult make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors);
 
 }

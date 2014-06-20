@@ -41,7 +41,7 @@ public class TopologyOptimizer {
     private StormTopology rawTopology;
     private Map<String, Object> conf;
     private MeasuredSource measuredSource;
-    private DecisionMaker decisionMaker;
+    private AllocCalculator allocCalculator;
 
     public void init(String topologyName, Map<String, Object> conf, MeasuredSource measuredSource) {
         this.conf = conf;
@@ -57,13 +57,13 @@ public class TopologyOptimizer {
         // current allocation should be retrieved from nimbus
         currAllocation = getTopologyCurrAllocation();
         try {
-            String defaultAnalyzer = SimpleGeneralDecisionMaker.class.getName();
-            decisionMaker = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAnalyzer))
-                    .asSubclass(DecisionMaker.class).newInstance();
+            String defaultAnalyzer = SimpleGeneralAllocCalculator.class.getName();
+            allocCalculator = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAnalyzer))
+                    .asSubclass(AllocCalculator.class).newInstance();
         } catch (Exception e) {
             throw new RuntimeException("Create Analyzer failed", e);
         }
-        decisionMaker.init(conf, currAllocation, rawTopology);
+        allocCalculator.init(conf, currAllocation, rawTopology);
     }
 
     public void start() {
@@ -92,7 +92,7 @@ public class TopologyOptimizer {
                 currAllocation = allc;
                 // discard old MeasuredData
                 consumeData(data);
-                decisionMaker.allocationChanged(Collections.unmodifiableMap(currAllocation));
+                allocCalculator.allocationChanged(Collections.unmodifiableMap(currAllocation));
             } else {
                 AggResultCalculator calculator = new AggResultCalculator(data, topoExecutors, rawTopology);
                 calculator.calCMVStat();
@@ -131,7 +131,7 @@ public class TopologyOptimizer {
                     getNumWorkers(currAllocation)) * maxExecutorsPerWorker : topologyMaxExecutors;
             Map<String, Integer> ret = null;
             try {
-                OptimizeDecision decision = decisionMaker.make(data, maxExecutors);
+                AllocResult decision = allocCalculator.make(data, maxExecutors);
                 ret = decision.currOptAllocation;
             } catch (Throwable e) {
             }

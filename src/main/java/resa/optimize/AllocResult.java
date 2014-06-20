@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * Created by ding on 14-4-29.
  */
-public class OptimizeDecision {
+public class AllocResult {
 
     //TODO: add expected QoS for both minReqOptAllocation and currOptAllocation
     //so that for later programme to optimize the rebalance behavior
@@ -20,14 +20,14 @@ public class OptimizeDecision {
     public final Map<String, Integer> minReqOptAllocation;
     public final Map<String, Integer> currOptAllocation;
 
-    public OptimizeDecision(Status status, Map<String, Integer> minReqOptAllocation,
-                            Map<String, Integer> currOptAllocation) {
+    public AllocResult(Status status, Map<String, Integer> minReqOptAllocation,
+                       Map<String, Integer> currOptAllocation) {
         this.status = status;
         this.minReqOptAllocation = minReqOptAllocation;
         this.currOptAllocation = currOptAllocation;
     }
 
-    public OptimizeDecision(Status status, Map<String, Integer> currOptAllocation) {
+    public AllocResult(Status status, Map<String, Integer> currOptAllocation) {
         this(status, Collections.EMPTY_MAP, currOptAllocation);
     }
 }
