@@ -15,7 +15,7 @@ import java.util.Map;
 public class FakeAllocCalculator extends AllocCalculator {
 
     @Override
-    public AllocResult make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors) {
+    public AllocResult calc(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
         Map<String, Integer> ret = new HashMap<>(currAllocation);
         ArrayList<Map.Entry<String, Integer>> tmp = new ArrayList<>(ret.entrySet());
         Collections.shuffle(tmp);

@@ -29,7 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
- * Class responsible for watch topology's allocation, and make a decision whether change of allocation
+ * Class responsible for watch topology's allocation, and calc a decision whether change of allocation
  * should be take effect.
  *
  * @author Troy Ding

@@ -30,7 +30,7 @@ public class SimpleGeneralAllocCalculator extends AllocCalculator {
     }
 
     @Override
-    public AllocResult make(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
+    public AllocResult calc(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors) {
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_spouts().containsKey(e.getKey()))
                 .forEach(e -> spoutAregatedData.putResult(e.getKey(), e.getValue()));
         executorAggResults.entrySet().stream().filter(e -> rawTopology.get_bolts().containsKey(e.getKey()))

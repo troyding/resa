@@ -5,7 +5,7 @@ import backtype.storm.generated.StormTopology;
 import java.util.Map;
 
 /**
- * Note: All the methods in this class will be invoked in the same thread, so it is not need to make
+ * Note: All the methods in this class will be invoked in the same thread, so it is not need to calc
  * them synchronized.
  * Created by ding on 14-4-30.
  */
@@ -36,6 +36,6 @@ public abstract class AllocCalculator {
         this.currAllocation = newAllocation;
     }
 
-    public abstract AllocResult make(Map<String, AggResult[]> executorAggResults, int maxAvailableExectors);
+    public abstract AllocResult calc(Map<String, AggResult[]> executorAggResults, int maxAvailableExecutors);
 
 }

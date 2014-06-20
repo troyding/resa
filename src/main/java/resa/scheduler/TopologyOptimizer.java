@@ -97,7 +97,7 @@ public class TopologyOptimizer {
             } else {
                 AggResultCalculator calculator = new AggResultCalculator(data, topoExecutors, rawTopology);
                 calculator.calCMVStat();
-                //TODO: (added by Tom) we need to make the maxProcessedDataSize as a configuration parameter.
+                //TODO: (added by Tom) we need to calc the maxProcessedDataSize as a configuration parameter.
                 // set a return value (count) from calculator.calCMVStat()
                 // if the count == maxProcessedDataSize (current is 500, say), we need to do something,
                 // since otherwise, the measurement data is too obsolete
@@ -107,7 +107,7 @@ public class TopologyOptimizer {
                     LOG.info("Old allc is " + currAllocation);
                     LOG.info("new allc is " + newAllocation);
                     //TODO: tagged by Tom, in future, we need to improve
-                    // this rebanlace step to make more stable and smooth
+                    // this rebanlace step to calc more stable and smooth
                     // Idea 1) we can maintain an decision list, only when we have received continuous
                     // decision with x times (x is the parameter), we will do rebalance (so that unstable oscillation
                     // is removed)
@@ -132,7 +132,7 @@ public class TopologyOptimizer {
                     getNumWorkers(currAllocation)) * maxExecutorsPerWorker : topologyMaxExecutors;
             Map<String, Integer> ret = null;
             try {
-                AllocResult decision = allocCalculator.make(data, maxExecutors);
+                AllocResult decision = allocCalculator.calc(data, maxExecutors);
                 ret = decision.currOptAllocation;
             } catch (Throwable e) {
             }
