@@ -11,6 +11,7 @@ import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import org.junit.Test;
+import resa.scheduler.AggResultCalculator;
 import resa.topology.RandomSentenceSpout;
 import resa.topology.TopologyWithSleepBolt.TASplitSentence;
 import resa.topology.TopologyWithSleepBolt.TAWordCounter;

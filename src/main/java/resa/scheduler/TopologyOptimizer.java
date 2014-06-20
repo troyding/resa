@@ -1,4 +1,4 @@
-package resa.optimize;
+package resa.scheduler;
 
 import backtype.storm.Config;
 import backtype.storm.generated.Nimbus;
@@ -11,6 +11,7 @@ import backtype.storm.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import resa.metrics.MeasuredData;
+import resa.optimize.*;
 import resa.util.ConfigUtil;
 import resa.util.TopologyHelper;
 

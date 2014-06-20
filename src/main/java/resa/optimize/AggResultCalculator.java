@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
  * Recv-Queue arrival count includes ack for each message
  * When calculate sum and average, need to adjust (sum - #message, average - 1) for accurate value.
  */
-class AggResultCalculator {
+public class AggResultCalculator {
 
     private static final Logger LOG = LoggerFactory.getLogger(AggResultCalculator.class);
 
