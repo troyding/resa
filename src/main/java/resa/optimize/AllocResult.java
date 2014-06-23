@@ -1,6 +1,5 @@
 package resa.optimize;
 
-import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -28,6 +27,6 @@ public class AllocResult {
     }
 
     public AllocResult(Status status, Map<String, Integer> currOptAllocation) {
-        this(status, Collections.EMPTY_MAP, currOptAllocation);
+        this(status, null, currOptAllocation);
     }
 }
