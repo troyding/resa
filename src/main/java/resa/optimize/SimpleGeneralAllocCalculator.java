@@ -142,9 +142,12 @@ public class SimpleGeneralAllocCalculator extends AllocCalculator {
         retCurrAllocation.putAll(allocResult.currOptAllocation);
         LOG.info(currAllocation + "-->" + retCurrAllocation);
         LOG.info("minReq: {} " + allocResult.minReqOptAllocation + ", status: " + allocResult.status);
-        Map<String, Integer> retMinReqAllocation = new HashMap<>(currAllocation);
-        // merge the optimized decision into source allocation
-        retMinReqAllocation.putAll(allocResult.minReqOptAllocation);
+        Map<String, Integer> retMinReqAllocation = null;
+        if (allocResult.minReqOptAllocation != null) {
+            retMinReqAllocation = new HashMap<>(currAllocation);
+            // merge the optimized decision into source allocation
+            retMinReqAllocation.putAll(allocResult.minReqOptAllocation);
+        }
         return new AllocResult(allocResult.status, retMinReqAllocation, retCurrAllocation);
     }
 

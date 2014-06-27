@@ -97,7 +97,7 @@ public class SimpleGeneralServiceModel {
         if (topMinReq <= totalResourceCount) {
             int remainCount = totalResourceCount - topMinReq;
             for (int i = 0; i < remainCount; i++) {
-                double maxDiff = Double.MIN_VALUE;
+                double maxDiff = -1;
                 String maxDiffCid = null;
 
                 for (Map.Entry<String, ServiceNode> e : components.entrySet()) {
@@ -156,7 +156,8 @@ public class SimpleGeneralServiceModel {
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
                                                                            double maxAllowedCompleteTime,
                                                                            double lowerBoundDelta,
-                                                                           double adjRatio) {
+                                                                           double adjRatio,
+                                                                           int maxAvailableExec) {
         double lowerBoundServiceTime = 0.0;
         int totalMinReq = 0;
         for (Map.Entry<String, ServiceNode> e : components.entrySet()) {
@@ -178,20 +179,23 @@ public class SimpleGeneralServiceModel {
                         + currTime * 1000.0 + ", totalMinReqQoS: " + totalMinReq);
 
                 totalMinReq++;
-                //TODO: causion, we need to add some codes to deal with infinite loop!
-            } while (currTime > maxAllowedCompleteTime);
+                //check: we need to check totalMinReq to avoid infinite loop!
+            } while (currTime > maxAllowedCompleteTime && totalMinReq <= maxAvailableExec);
         }
-        return currAllocation;
+        return totalMinReq <= maxAvailableExec ? currAllocation : null;
     }
 
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
-                                                                           double maxAllowedCompleteTime) {
-        return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, 1.0);
+                                                                           double maxAllowedCompleteTime,
+                                                                           int maxAvailableExec) {
+        return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, 1.0, maxAvailableExec);
     }
 
     public static Map<String, Integer> getMinReqServerAllocationGeneralTop(Map<String, ServiceNode> components,
-                                                                           double maxAllowedCompleteTime, double adjRatio) {
-        return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, adjRatio);
+                                                                           double maxAllowedCompleteTime,
+                                                                           double adjRatio,
+                                                                           int maxAvailableExec) {
+        return getMinReqServerAllocationGeneralTop(components, maxAllowedCompleteTime, 0.0, adjRatio, maxAvailableExec);
     }
 
     public static int totalServerCountInvolved(Map<String, Integer> allocation) {
@@ -200,7 +204,6 @@ public class SimpleGeneralServiceModel {
 
 
     /**
-     *
      * @param queueingNetwork
      * @param realLatencyMilliSec
      * @param targetQoSMilliSec
@@ -211,8 +214,8 @@ public class SimpleGeneralServiceModel {
      * after: the optimized allocation under given maxAvailable4Bolt
      */
     public static AllocResult checkOptimized(Map<String, ServiceNode> queueingNetwork, double realLatencyMilliSec,
-                                                  double targetQoSMilliSec, Map<String, Integer> currBoltAllocation,
-                                                  int maxAvailable4Bolt) {
+                                             double targetQoSMilliSec, Map<String, Integer> currBoltAllocation,
+                                             int maxAvailable4Bolt) {
 
         ///Caution about the time unit!, second is used in all the functions of calculation
         /// millisecond is used in the output display!
@@ -224,7 +227,7 @@ public class SimpleGeneralServiceModel {
                 + ", underEstRatio: " + underEstimateRatio);
         LOG.info("Find out minReqAllocation under QoS requirement.");
         Map<String, Integer> minReqAllocation = getMinReqServerAllocationGeneralTop(queueingNetwork,
-                targetQoSMilliSec / 1000.0, underEstimateRatio);
+                targetQoSMilliSec / 1000.0, underEstimateRatio, maxAvailable4Bolt * 2);
         AllocResult.Status status = AllocResult.Status.FEASIBALE;
         if (minReqAllocation == null) {
             status = AllocResult.Status.INFEASIBLE;

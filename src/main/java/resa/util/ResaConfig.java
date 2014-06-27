@@ -27,7 +27,9 @@ public class ResaConfig extends Config {
 
     public static final String OPTIMIZE_INTERVAL = "resa.optimize.interval.secs";
 
-    public static final String ANALYZER_CLASS = "resa.optimize.analyzer.class";
+    public static final String ALLOC_CALC_CLASS = "resa.optimize.alloc.class";
+
+    public static final String DECISION_MAKER_CLASS = "resa.scheduler.decision.class";
 
     private ResaConfig(boolean loadDefault) {
         if (loadDefault) {

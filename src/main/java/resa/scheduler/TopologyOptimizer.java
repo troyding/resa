@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import resa.metrics.MeasuredData;
 import resa.optimize.*;
 import resa.util.ConfigUtil;
+import resa.util.ResaUtils;
 import resa.util.TopologyHelper;
 
 import java.util.*;
@@ -43,32 +44,36 @@ public class TopologyOptimizer {
     private Map<String, Object> conf;
     private MeasuredSource measuredSource;
     private AllocCalculator allocCalculator;
+    private DecisionMaker decisionMaker;
 
     public void init(String topologyName, Map<String, Object> conf, MeasuredSource measuredSource) {
         this.conf = conf;
         this.topologyName = topologyName;
         this.measuredSource = measuredSource;
-        maxExecutorsPerWorker = ConfigUtil.getInt(conf, MAX_EXECUTORS_PER_WORKER, 10);
+        maxExecutorsPerWorker = ConfigUtil.getInt(conf, MAX_EXECUTORS_PER_WORKER, 8);
         topologyMaxExecutors = ConfigUtil.getInt(conf, ALLOWED_EXECUTOR_NUM, -1);
         rebalanceWaitingSecs = ConfigUtil.getInt(conf, REBALANCE_WAITING_SECS, -1);
         // connected to nimbus
         nimbus = NimbusClient.getConfiguredClient(conf).getClient();
         this.topologyId = TopologyHelper.getTopologyId(nimbus, topologyName);
         this.rawTopology = getRawTopologyThrow();
+        // create Allocation Calculator
+        allocCalculator = ResaUtils.newInstanceThrow((String) conf.getOrDefault(ALLOC_CALC_CLASS,
+                SimpleGeneralAllocCalculator.class.getName()), AllocCalculator.class);
         // current allocation should be retrieved from nimbus
         currAllocation = getTopologyCurrAllocation();
-        try {
-            String defaultAnalyzer = SimpleGeneralAllocCalculator.class.getName();
-            allocCalculator = Class.forName((String) conf.getOrDefault(ANALYZER_CLASS, defaultAnalyzer))
-                    .asSubclass(AllocCalculator.class).newInstance();
-        } catch (Exception e) {
-            throw new RuntimeException("Create Analyzer failed", e);
-        }
-        allocCalculator.init(conf, currAllocation, rawTopology);
+        allocCalculator.init(conf, Collections.unmodifiableMap(currAllocation), rawTopology);
+        // create Decision Maker
+        decisionMaker = ResaUtils.newInstanceThrow((String) conf.getOrDefault(DECISION_MAKER_CLASS,
+                DefaultDecisionMaker.class.getName()), DecisionMaker.class);
+        decisionMaker.init(conf, rawTopology);
+        LOG.info("AllocCalculator class:" + allocCalculator.getClass().getName());
+        LOG.info("DecisionMaker class:" + decisionMaker.getClass().getName());
     }
 
     public void start() {
         long calcInterval = ConfigUtil.getInt(conf, OPTIMIZE_INTERVAL, 30) * 1000;
+        //start optimize thread
         timer.scheduleAtFixedRate(new OptimizeTask(), calcInterval * 2, calcInterval);
         LOG.info(String.format("Init Topology Optimizer successfully with calc interval is %dms", calcInterval));
     }
@@ -106,12 +111,6 @@ public class TopologyOptimizer {
                     LOG.info("Detected topology allocation changed, request rebalance....");
                     LOG.info("Old allc is " + currAllocation);
                     LOG.info("new allc is " + newAllocation);
-                    //TODO: tagged by Tom, in future, we need to improve
-                    // this rebanlace step to calc more stable and smooth
-                    // Idea 1) we can maintain an decision list, only when we have received continuous
-                    // decision with x times (x is the parameter), we will do rebalance (so that unstable oscillation
-                    // is removed)
-                    // Idea 2) we need to consider the expected gain (by consider the expected QoS gain) as a weight
                     requestRebalance(newAllocation);
                 }
             }
@@ -133,8 +132,16 @@ public class TopologyOptimizer {
             Map<String, Integer> ret = null;
             try {
                 AllocResult decision = allocCalculator.calc(data, maxExecutors);
-                ret = decision.currOptAllocation;
+                // tagged by Tom, modified by troy:
+                // in decisionMaker , we need to improve this rebalance step to calc more stable and smooth
+                // Idea 1) we can maintain an decision list, only when we have received continuous
+                // decision with x times (x is the parameter), we will do rebalance (so that unstable oscillation
+                // is removed)
+                // Idea 2) we need to consider the expected gain (by consider the expected QoS gain) as a weight,
+                // which should be contained in the AllocResult object.
+                ret = decisionMaker.make(decision, Collections.unmodifiableMap(currAllocation));
             } catch (Throwable e) {
+                LOG.warn("calc new allocation failed", e);
             }
             return ret;
         }

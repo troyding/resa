@@ -29,4 +29,5 @@ public class AllocResult {
     public AllocResult(Status status, Map<String, Integer> currOptAllocation) {
         this(status, null, currOptAllocation);
     }
+
 }

@@ -120,7 +120,8 @@ public class SimpleGeneralServiceModelTest {
         para.put("split", 4);
         para.put("counter", 2);
 
-        Map<String, Integer> allo = SimpleGeneralServiceModel.getMinReqServerAllocationGeneralTop(components, 1500, 0, 1.0234548286107188);
+        Map<String, Integer> allo = SimpleGeneralServiceModel.getMinReqServerAllocationGeneralTop(components, 1500, 0,
+                1.0234548286107188, 12);
         System.out.println(allo);
     }
 
@@ -177,8 +178,8 @@ public class SimpleGeneralServiceModelTest {
         System.out.println("estimated: " + estimatedLatencyMilliSec + ", estiQoSSatisfied: " + targetQoSSatisfied + ", real: "
                 + realLatencyMilliSec + ", realQoSSatisfied: " + (realLatencyMilliSec < targetQoSMilliSec));
 
-        Map<String, Integer> minReqAllocation = SimpleGeneralServiceModel.getMinReqServerAllocationGeneralTop(components, targetQoSMilliSec / 1000.0,
-                underEstimateRatio);
+        Map<String, Integer> minReqAllocation = SimpleGeneralServiceModel.getMinReqServerAllocationGeneralTop(components,
+                targetQoSMilliSec / 1000.0, underEstimateRatio, maxAvailable4Bolt * 2);
         int minReqTotalServerCount = minReqAllocation == null ? Integer.MAX_VALUE :
                 SimpleGeneralServiceModel.totalServerCountInvolved(minReqAllocation);
         double minReqQoSMilliSec = SimpleGeneralServiceModel.getErlangGeneralTopCompleteTime(components,

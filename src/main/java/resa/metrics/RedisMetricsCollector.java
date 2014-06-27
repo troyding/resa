@@ -54,7 +54,7 @@ public class RedisMetricsCollector extends FilteredMetricsCollector {
         queueName = (String) stormConf.get(REDIS_QUEUE_NAME);
         // queue name is not exist, use topology id as default
         if (queueName == null) {
-            queueName = context.getStormId();
+            queueName = context.getStormId() + "-metrics";
         }
         LOG.info("Write metrics to redis server " + jedisHost + ":" + jedisPort);
     }

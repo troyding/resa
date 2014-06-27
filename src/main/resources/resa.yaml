@@ -5,7 +5,7 @@ resa.comp.sample.rate: 0.05
 
 resa.metric.redis.host: localhost
 resa.metric.redis.port: 6379
-resa.metric.redis.queue-name: metrics
+#resa.metric.redis.queue-name: metrics
 resa.metric.approved.names:
   - "complete-latency"
   - "execute"
@@ -13,12 +13,15 @@ resa.metric.approved.names:
   - "__receive recv-queue"
   - "emit"
 
-### optimize scheduler
+### optimize
 resa.topology.max.executor.per.worker: 5
 resa.topology.rebalance.waiting.secs: 30
 resa.optimize.interval.secs: 30
-resa.optimize.analyzer.class: resa.optimize.SimpleModelDecisionMaker
 resa.topology.allowed.executor.num: -1
+
+#### scheduler
+resa.scheduler.alloc.class: resa.optimize.SimpleGeneralAllocCalculator
+resa.scheduler.decision.class: resa.scheduler.DefaultDecisionMaker
 
 ####migrate
 resa.comp.checkpoint.interval.sec: 30

@@ -11,14 +11,16 @@ import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.utils.Utils;
 import org.junit.Test;
-import resa.scheduler.AggResultCalculator;
 import resa.topology.RandomSentenceSpout;
 import resa.topology.TopologyWithSleepBolt.TASplitSentence;
 import resa.topology.TopologyWithSleepBolt.TAWordCounter;
 import resa.util.ResaConfig;
 import resa.util.TopologyHelper;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
