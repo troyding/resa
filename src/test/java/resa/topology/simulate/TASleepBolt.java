@@ -1,4 +1,4 @@
-package resa.topology.TopologyWithSleepBolt;
+package resa.topology.simulate;
 
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -16,6 +16,14 @@ public abstract class TASleepBolt extends BaseRichBolt {
     private IntervalSupplier sleep;
 
     public TASleepBolt(IntervalSupplier sleep) {
+        this.sleep = sleep;
+    }
+
+    public TASleepBolt() {
+        this.sleep = () -> 0L;
+    }
+
+    protected void setIntervalSupplier(IntervalSupplier sleep) {
         this.sleep = sleep;
     }
 

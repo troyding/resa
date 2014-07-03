@@ -4,6 +4,8 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
+import resa.topology.simulate.IntervalSupplier;
+import resa.topology.simulate.TASleepBolt;
 
 import java.util.StringTokenizer;
 
