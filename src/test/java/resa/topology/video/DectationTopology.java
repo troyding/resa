@@ -51,12 +51,13 @@ public class DectationTopology {
         }
         ResaConfig resaConfig = ResaConfig.create();
         resaConfig.putAll(conf);
-        resaConfig.addOptimizeSupport();
         StormTopology topology = createTopology(conf);
         if (args[0].equals("[local]")) {
+            resaConfig.setDebug(false);
             LocalCluster localCluster = new LocalCluster();
             localCluster.submitTopology("local", resaConfig, topology);
         } else {
+            resaConfig.addOptimizeSupport();
             StormSubmitter.submitTopology(args[0], resaConfig, topology);
         }
     }

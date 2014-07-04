@@ -6,6 +6,7 @@ import redis.clients.jedis.Jedis;
 import resa.util.ConfigUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
@@ -113,6 +114,9 @@ public class ImageSender {
             return;
         }
         ImageSender sender = new ImageSender(ConfigUtil.readConfig(new File(args[0])));
+        if (!new File(args[1]).exists()) {
+            throw new FileNotFoundException(args[1]);
+        }
         System.out.println("start sender");
         sender.send2Queue(args[1], Integer.parseInt(args[2]), Integer.parseInt(args[3]));
         System.out.println("end sender");

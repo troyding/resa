@@ -38,19 +38,17 @@ public class FeatureExtracter extends BaseRichBolt {
         byte[] imgBytes = (byte[]) input.getValueByField(FIELD_IMG_BYTES);
         IplImage image = cvDecodeImage(cvMat(1, imgBytes.length, CV_8UC1, new BytePointer(imgBytes)));
         KeyPoint points = new KeyPoint();
-        CvMat featureDesc;
+        Mat featureDesc = new Mat();
         try {
             Mat matImg = new Mat(image);
             sift.detect(matImg, points);
-            Mat feat = new Mat();
-            sift.compute(matImg, points, feat);
-            featureDesc = feat.asCvMat();
+            sift.compute(matImg, points, featureDesc);
         } finally {
             cvReleaseImage(image);
         }
         int rows = featureDesc.rows();
         for (int i = 0; i < rows; i++) {
-            featureDesc.rows(i).get(buf);
+            featureDesc.rows(i).asCvMat().get(buf);
             // compress data
             float[] siftFeat = new float[buf.length];
             for (int j = 0; j < buf.length; j++) {
