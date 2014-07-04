@@ -30,16 +30,16 @@ public class DectationTopology {
         String queue = (String) conf.get("redis.queue");
         builder.setSpout("image-input", new ImageSource(host, port, queue), getInt(conf, "spout.parallelism", 1));
 
-        builder.setBolt("feat-ext", new FeatureExtracter(), getInt(conf, "fd.feat-ext.parallelism", 1))
+        builder.setBolt("feat-ext", new FeatureExtracter(), getInt(conf, "vd.feat-ext.parallelism", 1))
                 .shuffleGrouping("image-input", STREAM_IMG_OUTPUT)
-                .setNumTasks(getInt(conf, "fd.feat-ext.tasks", 1));
-        builder.setBolt("dist-calc", new DistCalculator(), getInt(conf, "fd.dist-calc.parallelism", 1))
+                .setNumTasks(getInt(conf, "vd.feat-ext.tasks", 1));
+        builder.setBolt("dist-calc", new DistCalculator(), getInt(conf, "vd.dist-calc.parallelism", 1))
                 .shuffleGrouping("feat-ext", STREAM_FEATURE_DESC)
-                .setNumTasks(getInt(conf, "fd.dist-calc.tasks", 1));
-        builder.setBolt("frame-matcher", new FrameMatcher(), getInt(conf, "fd.frame-matcher.parallelism", 1))
+                .setNumTasks(getInt(conf, "vd.dist-calc.tasks", 1));
+        builder.setBolt("frame-matcher", new FrameMatcher(), getInt(conf, "vd.frame-matcher.parallelism", 1))
                 .fieldsGrouping("feat-ext", STREAM_FEATURE_COUNT, new Fields(FIELD_FRAME_ID))
                 .fieldsGrouping("dist-calc", STREAM_MATCH_IMAGES, new Fields(FIELD_FRAME_ID))
-                .setNumTasks(getInt(conf, "fd.frame-matcher.tasks", 1));
+                .setNumTasks(getInt(conf, "vd.frame-matcher.tasks", 1));
         return builder.createTopology();
     }
 
