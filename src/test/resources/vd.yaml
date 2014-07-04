@@ -1,0 +1,17 @@
+topology.workers: 3
+
+##redis config if redis spout is enabled
+redis.host: "192.168.0.30"
+redis.port: 6379
+redis.queue: "images"
+
+vd.spout.parallelism: 1
+vd.feat-ext.parallelism: 1
+vd.feat-ext.tasks: 1
+vd.dist-calc.parallelism: 1
+vd.dist-calc.tasks: 1
+vd.frame-matcher.parallelism: 1
+vd.frame-matcher.tasks: 1
+
+vd.feature.dist.threshold: 128
+vd.match.min.ratio: 0.4

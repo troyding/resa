@@ -20,6 +20,7 @@ public class RedisQueueSpout extends BaseRichSpout {
 
     private String queue;
     private String host;
+    private byte[] byteQueueName;
     private int port;
     private transient Jedis jedis = null;
 
@@ -27,6 +28,21 @@ public class RedisQueueSpout extends BaseRichSpout {
         this.host = host;
         this.port = port;
         this.queue = queue;
+    }
+
+    public RedisQueueSpout(String host, int port, String queue, boolean useBinary) {
+        this.host = host;
+        this.port = port;
+        this.queue = queue;
+        useBinary(useBinary);
+    }
+
+    public void useBinary(boolean use) {
+        if (use) {
+            byteQueueName = queue.getBytes();
+        } else {
+            byteQueueName = null;
+        }
     }
 
     @Override
@@ -52,7 +68,7 @@ public class RedisQueueSpout extends BaseRichSpout {
         }
         Object text;
         try {
-            text = jedis.lpop(queue);
+            text = byteQueueName == null ? jedis.lpop(queue) : jedis.lpop(byteQueueName);
         } catch (Exception e) {
             disconnect();
             return;
