@@ -25,6 +25,7 @@ import static resa.topology.video.Constant.*;
  */
 public class DistCalculator extends BaseRichBolt {
 
+    private static final int[] EMPTY_MATCH = new int[0];
     private Map<float[], int[]> featDesc2Image;
     private OutputCollector collector;
     private double distThreshold;
@@ -64,20 +65,30 @@ public class DistCalculator extends BaseRichBolt {
     @Override
     public void execute(Tuple input) {
         String frameId = input.getStringByField(FIELD_FRAME_ID);
-        featDesc2Image.entrySet().stream()
-                .filter(e -> isMatch(e.getKey(), (float[]) input.getValueByField(FIELD_FEATURE_DESC)))
-                .map(Map.Entry::getValue)
-                .forEach(list -> collector.emit(STREAM_MATCH_IMAGES, input, new Values(frameId, list)));
+        double dist = Double.MAX_VALUE;
+        int[] matches = EMPTY_MATCH;
+        float[] desc = (float[]) input.getValueByField(FIELD_FEATURE_DESC);
+        for (Map.Entry<float[], int[]> e : featDesc2Image.entrySet()) {
+            double d = distance(e.getKey(), desc);
+            if (d < dist) {
+                dist = d;
+                matches = e.getValue();
+            }
+        }
+        if (dist > distThreshold) {
+            matches = EMPTY_MATCH;
+        }
+        collector.emit(STREAM_MATCH_IMAGES, input, new Values(frameId, matches));
         collector.ack(input);
     }
 
-    private boolean isMatch(float[] v1, float[] v2) {
+    private double distance(float[] v1, float[] v2) {
         double sum = 0;
         for (int i = 0; i < v1.length; i++) {
             double d = v1[i] - v2[1];
             sum += d * d;
         }
-        return Double.compare(Math.sqrt(sum), distThreshold) < 0;
+        return Math.sqrt(sum);
     }
 
     @Override

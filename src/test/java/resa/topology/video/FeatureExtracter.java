@@ -31,6 +31,7 @@ public class FeatureExtracter extends BaseRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         sift = new SIFT();
         buf = new double[128];
+        this.collector = collector;
     }
 
     @Override
@@ -54,7 +55,7 @@ public class FeatureExtracter extends BaseRichBolt {
             for (int j = 0; j < buf.length; j++) {
                 siftFeat[j] = (float) buf[j];
             }
-            Point2f p = points.pt();
+            Point2f p = points.position(i).pt();
             collector.emit(STREAM_FEATURE_DESC, input,
                     new Values(input.getValueByField(FIELD_FRAME_ID), p.x(), p.y(), siftFeat));
         }

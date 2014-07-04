@@ -34,7 +34,7 @@ public class FrameMatcher extends BaseRichBolt {
         void update(int[] imgIds) {
             curr++;
             for (int i = 0; i < imgIds.length; i++) {
-                imageCounter.computeIfAbsent(i, (k) -> new Counter()).incAndGet();
+                imageCounter.computeIfAbsent(imgIds[i], (k) -> new Counter()).incAndGet();
             }
         }
 
