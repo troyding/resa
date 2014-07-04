@@ -33,7 +33,8 @@ public class ImageSource extends RedisQueueSpout {
 
     @Override
     protected void emitData(Object data) {
-        collector.emit(STREAM_IMG_OUTPUT, new Values(idPrefix + frameId++, data));
+        String id = idPrefix + frameId++;
+        collector.emit(STREAM_IMG_OUTPUT, new Values(id, data), id);
     }
 
     @Override
