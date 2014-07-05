@@ -31,7 +31,7 @@ public class FeatureExtracter extends BaseRichBolt {
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        sift = new SIFT();
+        sift = new SIFT(0, 3, 0.05, 12, 1.6);
         buf = new double[128];
         this.collector = collector;
     }

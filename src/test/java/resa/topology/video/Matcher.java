@@ -45,7 +45,7 @@ public class Matcher extends BaseRichBolt {
             String line;
             int count = 0;
             while ((line = reader.readLine()) != null) {
-                if (line.isEmpty() || count++ % totalPieces == index) {
+                if (line.isEmpty() || count++ % totalPieces != index) {
                     continue;
                 }
                 StringTokenizer tokenizer = new StringTokenizer(line);
