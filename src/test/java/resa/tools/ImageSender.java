@@ -15,9 +15,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.bytedeco.javacpp.opencv_core.cvSize;
 import static org.bytedeco.javacpp.opencv_highgui.cvSaveImage;
-import static org.bytedeco.javacpp.opencv_imgproc.cvResize;
 
 /**
  * Created by ding on 14-3-18.
@@ -43,7 +41,7 @@ public class ImageSender {
         opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(videoFile);
         try {
             opencv_core.Mat mat = new opencv_core.Mat();
-            opencv_core.IplImage img = null;
+//            opencv_core.IplImage img = null;
             long now;
             Set<Integer> retainFrames = new HashSet<>();
             while (true) {
@@ -59,13 +57,13 @@ public class ImageSender {
                     }
                     if (retainFrames.contains(j)) {
                         opencv_core.IplImage source = mat.asIplImage();
-                        if (img == null) {
-                            opencv_core.CvSize size = cvSize(source.width() / 2, source.height() / 2);
-                            img = opencv_core.IplImage.create(size, source.depth(), source.nChannels());
-                        }
-                        cvResize(source, img);
+//                        if (img == null) {
+//                            opencv_core.CvSize size = cvSize(source.width() / 2, source.height() / 2);
+//                            img = opencv_core.IplImage.create(size, source.depth(), source.nChannels());
+//                        }
+//                        cvResize(source, img);
                         File imgFile = File.createTempFile("img-", ".jpg");
-                        cvSaveImage(imgFile.getAbsolutePath(), img);
+                        cvSaveImage(imgFile.getAbsolutePath(), source);
                         dataQueue.put(imgFile);
                     }
                 }
