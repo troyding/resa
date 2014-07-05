@@ -82,6 +82,7 @@ public class Aggregater extends BaseRichBolt {
             System.out.println(out);
             // just for metrics output
             collector.emit(new Values(out));
+            pendingFrames.remove(fCtx.frameId);
         }
         collector.ack(input);
     }

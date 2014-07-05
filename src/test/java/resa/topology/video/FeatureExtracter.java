@@ -52,14 +52,14 @@ public class FeatureExtracter extends BaseRichBolt {
         } finally {
             cvReleaseImage(image);
         }
-        List<float[]> selected = new ArrayList<>();
+        List<byte[]> selected = new ArrayList<>();
         int rows = featureDesc.rows();
         for (int i = 0; i < rows; i++) {
             featureDesc.rows(i).asCvMat().get(buf);
             // compress data
-            float[] siftFeat = new float[buf.length];
+            byte[] siftFeat = new byte[buf.length];
             for (int j = 0; j < buf.length; j++) {
-                siftFeat[j] = (float) buf[j];
+                siftFeat[j] = (byte) (((int) buf[j]) & 0xFF);
             }
             if (selected.stream().noneMatch(v -> distance(v, siftFeat) < prefiterDist)) {
                 selected.add(siftFeat);
@@ -71,10 +71,10 @@ public class FeatureExtracter extends BaseRichBolt {
         collector.ack(input);
     }
 
-    private double distance(float[] v1, float[] v2) {
+    private double distance(byte[] v1, byte[] v2) {
         double sum = 0;
         for (int i = 0; i < v1.length; i++) {
-            double d = v1[i] - v2[1];
+            double d = (v1[i] & 0xFF) - (v2[1] & 0xFF);
             sum += d * d;
         }
         return Math.sqrt(sum);

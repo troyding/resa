@@ -26,7 +26,7 @@ import static resa.topology.video.Constant.*;
 public class Matcher extends BaseRichBolt {
 
     private static final int[] EMPTY_MATCH = new int[0];
-    private Map<float[], int[]> featDesc2Image;
+    private Map<byte[], int[]> featDesc2Image;
     private OutputCollector collector;
     private double distThreshold;
 
@@ -50,9 +50,9 @@ public class Matcher extends BaseRichBolt {
                 }
                 StringTokenizer tokenizer = new StringTokenizer(line);
                 String[] tmp = StringUtils.split(tokenizer.nextToken(), ',');
-                float[] feat = new float[tmp.length];
+                byte[] feat = new byte[tmp.length];
                 for (int i = 0; i < feat.length; i++) {
-                    feat[i] = Float.parseFloat(tmp[i]);
+                    feat[i] = (byte) (((int) Double.parseDouble(tmp[i])) & 0xFF);
                 }
                 int[] images = Stream.of(StringUtils.split(tokenizer.nextToken(), ',')).mapToInt(Integer::parseInt)
                         .toArray();
@@ -66,7 +66,7 @@ public class Matcher extends BaseRichBolt {
     @Override
     public void execute(Tuple input) {
         String frameId = input.getStringByField(FIELD_FRAME_ID);
-        List<float[]> desc = (List<float[]>) input.getValueByField(FIELD_FEATURE_DESC);
+        List<byte[]> desc = (List<byte[]>) input.getValueByField(FIELD_FEATURE_DESC);
         Map<Integer, Long> image2Freq = desc.stream().map(this::findMatches)
                 .flatMap(imgList -> IntStream.of(imgList).boxed())
                 .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
@@ -80,10 +80,10 @@ public class Matcher extends BaseRichBolt {
         collector.ack(input);
     }
 
-    private int[] findMatches(float[] desc) {
+    private int[] findMatches(byte[] desc) {
         double dist = Double.MAX_VALUE;
         int[] matches = EMPTY_MATCH;
-        for (Map.Entry<float[], int[]> e : featDesc2Image.entrySet()) {
+        for (Map.Entry<byte[], int[]> e : featDesc2Image.entrySet()) {
             double d = distance(e.getKey(), desc);
             if (d < dist) {
                 dist = d;
@@ -96,10 +96,10 @@ public class Matcher extends BaseRichBolt {
         return matches;
     }
 
-    private double distance(float[] v1, float[] v2) {
+    private double distance(byte[] v1, byte[] v2) {
         double sum = 0;
         for (int i = 0; i < v1.length; i++) {
-            double d = v1[i] - v2[1];
+            double d = (v1[i] & 0xFF) - (v2[1] & 0xFF);
             sum += d * d;
         }
         return Math.sqrt(sum);
