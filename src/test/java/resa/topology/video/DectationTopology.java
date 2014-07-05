@@ -8,6 +8,7 @@ import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
+import resa.metrics.RedisMetricsCollector;
 import resa.topology.ResaTopologyBuilder;
 import resa.util.ResaConfig;
 
@@ -58,6 +59,7 @@ public class DectationTopology {
             localCluster.submitTopology("local", resaConfig, topology);
         } else {
             resaConfig.addOptimizeSupport();
+            resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
             StormSubmitter.submitTopology(args[0], resaConfig, topology);
         }
     }
