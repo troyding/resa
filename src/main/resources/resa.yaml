@@ -1,6 +1,9 @@
 #####resa config example########
 
 ### metrics
+# enable queue metrics
+topology.queue.trace: true
+topology.queue.sample.rate: 0.05
 resa.comp.sample.rate: 0.05
 
 resa.metric.redis.host: localhost

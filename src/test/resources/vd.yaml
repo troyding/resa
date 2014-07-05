@@ -19,3 +19,5 @@ vd.match.min.ratio: 0.2
 
 resa.comp.sample.rate: 0.1
 resa.metric.redis.host: 192.168.0.30
+topology.queue.trace: true
+topology.queue.sample.rate: 0.05

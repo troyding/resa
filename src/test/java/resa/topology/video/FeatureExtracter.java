@@ -11,7 +11,6 @@ import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.opencv_core.*;
 import org.bytedeco.javacpp.opencv_features2d.KeyPoint;
 import org.bytedeco.javacpp.opencv_nonfree.SIFT;
-import resa.util.ConfigUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,14 +28,12 @@ public class FeatureExtracter extends BaseRichBolt {
     private SIFT sift;
     private double[] buf;
     private OutputCollector collector;
-    private double prefiterDist;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         sift = new SIFT();
         buf = new double[128];
         this.collector = collector;
-        prefiterDist = ConfigUtil.getDouble(stormConf, CONF_FEAT_PREFILTER_THRESHOLD, Double.MAX_VALUE);
     }
 
     @Override
@@ -52,8 +49,8 @@ public class FeatureExtracter extends BaseRichBolt {
         } finally {
             cvReleaseImage(image);
         }
-        List<byte[]> selected = new ArrayList<>();
         int rows = featureDesc.rows();
+        List<byte[]> selected = new ArrayList<>(rows);
         for (int i = 0; i < rows; i++) {
             featureDesc.rows(i).asCvMat().get(buf);
             // compress data
@@ -61,23 +58,12 @@ public class FeatureExtracter extends BaseRichBolt {
             for (int j = 0; j < buf.length; j++) {
                 siftFeat[j] = (byte) (((int) buf[j]) & 0xFF);
             }
-            if (selected.stream().noneMatch(v -> distance(v, siftFeat) < prefiterDist)) {
-                selected.add(siftFeat);
-            }
+            selected.add(siftFeat);
         }
         String frameId = input.getStringByField(FIELD_FRAME_ID);
         collector.emit(STREAM_FEATURE_DESC, input, new Values(frameId, selected));
         collector.emit(STREAM_FEATURE_COUNT, input, new Values(frameId, selected.size()));
         collector.ack(input);
-    }
-
-    private double distance(byte[] v1, byte[] v2) {
-        double sum = 0;
-        for (int i = 0; i < v1.length; i++) {
-            double d = (v1[i] & 0xFF) - (v2[1] & 0xFF);
-            sum += d * d;
-        }
-        return Math.sqrt(sum);
     }
 
     @Override
