@@ -31,4 +31,6 @@ public interface Constant {
 
     public static String CONF_MATCH_RATIO = "vd.match.min.ratio";
 
+    public static String CONF_FEAT_PREFILTER_THRESHOLD = "vd.feature.prefilter.threshold";
+
 }

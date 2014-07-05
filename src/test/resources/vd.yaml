@@ -13,6 +13,7 @@ vd.dist-calc.tasks: 1
 vd.frame-matcher.parallelism: 1
 vd.frame-matcher.tasks: 1
 
+vd.feature.prefilter.threshold: 360
 vd.feature.dist.threshold: 482
 vd.match.min.ratio: 0.2
 

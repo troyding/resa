@@ -11,7 +11,10 @@ import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.opencv_core.*;
 import org.bytedeco.javacpp.opencv_features2d.KeyPoint;
 import org.bytedeco.javacpp.opencv_nonfree.SIFT;
+import resa.util.ConfigUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.bytedeco.javacpp.opencv_core.*;
@@ -26,12 +29,14 @@ public class FeatureExtracter extends BaseRichBolt {
     private SIFT sift;
     private double[] buf;
     private OutputCollector collector;
+    private double prefiterDist;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         sift = new SIFT();
         buf = new double[128];
         this.collector = collector;
+        prefiterDist = ConfigUtil.getDouble(stormConf, CONF_FEAT_PREFILTER_THRESHOLD, Double.MAX_VALUE);
     }
 
     @Override
@@ -47,6 +52,7 @@ public class FeatureExtracter extends BaseRichBolt {
         } finally {
             cvReleaseImage(image);
         }
+        List<float[]> selected = new ArrayList<>();
         int rows = featureDesc.rows();
         for (int i = 0; i < rows; i++) {
             featureDesc.rows(i).asCvMat().get(buf);
@@ -55,12 +61,24 @@ public class FeatureExtracter extends BaseRichBolt {
             for (int j = 0; j < buf.length; j++) {
                 siftFeat[j] = (float) buf[j];
             }
-            Point2f p = points.position(i).pt();
-            collector.emit(STREAM_FEATURE_DESC, input,
-                    new Values(input.getValueByField(FIELD_FRAME_ID), p.x(), p.y(), siftFeat));
+            if (selected.stream().noneMatch(v -> distance(v, siftFeat) < prefiterDist)) {
+                selected.add(siftFeat);
+                Point2f p = points.position(i).pt();
+                collector.emit(STREAM_FEATURE_DESC, input,
+                        new Values(input.getValueByField(FIELD_FRAME_ID), p.x(), p.y(), siftFeat));
+            }
         }
         collector.emit(STREAM_FEATURE_COUNT, input, new Values(input.getValueByField(FIELD_FRAME_ID), rows));
         collector.ack(input);
+    }
+
+    private double distance(float[] v1, float[] v2) {
+        double sum = 0;
+        for (int i = 0; i < v1.length; i++) {
+            double d = v1[i] - v2[1];
+            sum += d * d;
+        }
+        return Math.sqrt(sum);
     }
 
     @Override
