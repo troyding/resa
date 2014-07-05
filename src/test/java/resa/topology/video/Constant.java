@@ -11,9 +11,9 @@ public interface Constant {
 
     public static String FIELD_IMG_BYTES = "img-bytes";
 
-    public static String FIELD_POINT_X = "pt-x";
-
-    public static String FIELD_POINT_Y = "pt-y";
+//    public static String FIELD_POINT_X = "pt-x";
+//
+//    public static String FIELD_POINT_Y = "pt-y";
 
     public static String FIELD_FEATURE_DESC = "feat";
 

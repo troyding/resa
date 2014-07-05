@@ -34,13 +34,13 @@ public class DectationTopology {
         builder.setBolt("feat-ext", new FeatureExtracter(), getInt(conf, "vd.feat-ext.parallelism", 1))
                 .shuffleGrouping("image-input", STREAM_IMG_OUTPUT)
                 .setNumTasks(getInt(conf, "vd.feat-ext.tasks", 1));
-        builder.setBolt("dist-calc", new DistCalculator(), getInt(conf, "vd.dist-calc.parallelism", 1))
-                .shuffleGrouping("feat-ext", STREAM_FEATURE_DESC)
-                .setNumTasks(getInt(conf, "vd.dist-calc.tasks", 1));
-        builder.setBolt("frame-matcher", new FrameMatcher(), getInt(conf, "vd.frame-matcher.parallelism", 1))
+        builder.setBolt("matcher", new Matcher(), getInt(conf, "vd.matcher.parallelism", 1))
+                .allGrouping("feat-ext", STREAM_FEATURE_DESC)
+                .setNumTasks(getInt(conf, "vd.matcher.tasks", 1));
+        builder.setBolt("aggregater", new Aggregater(), getInt(conf, "vd.aggregater.parallelism", 1))
                 .fieldsGrouping("feat-ext", STREAM_FEATURE_COUNT, new Fields(FIELD_FRAME_ID))
-                .fieldsGrouping("dist-calc", STREAM_MATCH_IMAGES, new Fields(FIELD_FRAME_ID))
-                .setNumTasks(getInt(conf, "vd.frame-matcher.tasks", 1));
+                .fieldsGrouping("matcher", STREAM_MATCH_IMAGES, new Fields(FIELD_FRAME_ID))
+                .setNumTasks(getInt(conf, "vd.aggregater.tasks", 1));
         return builder.createTopology();
     }
 

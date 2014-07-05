@@ -2,7 +2,7 @@ package resa.util;
 
 /**
  * A simple counter.
- * <p/>
+ * <p>
  *
  * @author Troy Ding
  */
@@ -20,6 +20,11 @@ public class Counter {
 
     public long incAndGet() {
         return ++count;
+    }
+
+    public long incAndGet(long v) {
+        count += v;
+        return count;
     }
 
     public long getAndInc() {

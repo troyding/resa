@@ -8,10 +8,10 @@ redis.queue: "images"
 vd.spout.parallelism: 1
 vd.feat-ext.parallelism: 1
 vd.feat-ext.tasks: 1
-vd.dist-calc.parallelism: 1
-vd.dist-calc.tasks: 1
-vd.frame-matcher.parallelism: 1
-vd.frame-matcher.tasks: 1
+vd.matcher.parallelism: 1
+vd.matcher.tasks: 1
+vd.aggregater.parallelism: 1
+vd.aggregater.tasks: 1
 
 vd.feature.prefilter.threshold: 360
 vd.feature.dist.threshold: 482

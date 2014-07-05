@@ -63,11 +63,10 @@ public class FeatureExtracter extends BaseRichBolt {
             }
             if (selected.stream().noneMatch(v -> distance(v, siftFeat) < prefiterDist)) {
                 selected.add(siftFeat);
-                Point2f p = points.position(i).pt();
-                collector.emit(STREAM_FEATURE_DESC, input,
-                        new Values(input.getValueByField(FIELD_FRAME_ID), p.x(), p.y(), siftFeat));
             }
         }
+        collector.emit(STREAM_FEATURE_DESC, input,
+                new Values(input.getValueByField(FIELD_FRAME_ID), selected));
         collector.emit(STREAM_FEATURE_COUNT, input, new Values(input.getValueByField(FIELD_FRAME_ID), rows));
         collector.ack(input);
     }
@@ -83,8 +82,7 @@ public class FeatureExtracter extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(STREAM_FEATURE_DESC,
-                new Fields(FIELD_FRAME_ID, FIELD_POINT_X, FIELD_POINT_Y, FIELD_FEATURE_DESC));
+        declarer.declareStream(STREAM_FEATURE_DESC, new Fields(FIELD_FRAME_ID, FIELD_FEATURE_DESC));
         declarer.declareStream(STREAM_FEATURE_COUNT, new Fields(FIELD_FRAME_ID, FIELD_FEATURE_CNT));
     }
 }

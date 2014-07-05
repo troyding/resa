@@ -13,9 +13,9 @@ import resa.util.ConfigUtil;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static resa.topology.video.Constant.*;
@@ -23,7 +23,7 @@ import static resa.topology.video.Constant.*;
 /**
  * Created by ding on 14-7-3.
  */
-public class DistCalculator extends BaseRichBolt {
+public class Matcher extends BaseRichBolt {
 
     private static final int[] EMPTY_MATCH = new int[0];
     private Map<float[], int[]> featDesc2Image;
@@ -34,17 +34,18 @@ public class DistCalculator extends BaseRichBolt {
 
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         featDesc2Image = new HashMap<>();
-        loadIndex();
+        loadIndex(context.getThisTaskIndex(), context.getComponentTasks(context.getThisComponentId()).size());
         this.collector = collector;
         distThreshold = ConfigUtil.getDouble(stormConf, CONF_FEAT_DIST_THRESHOLD, 100);
     }
 
-    private void loadIndex() {
+    private void loadIndex(int index, int totalPieces) {
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(this.getClass().getResourceAsStream("/index.txt")))) {
             String line;
+            int count = 0;
             while ((line = reader.readLine()) != null) {
-                if (line.isEmpty()) {
+                if (line.isEmpty() || count++ % totalPieces == index) {
                     continue;
                 }
                 StringTokenizer tokenizer = new StringTokenizer(line);
@@ -65,9 +66,23 @@ public class DistCalculator extends BaseRichBolt {
     @Override
     public void execute(Tuple input) {
         String frameId = input.getStringByField(FIELD_FRAME_ID);
+        List<float[]> desc = (List<float[]>) input.getValueByField(FIELD_FEATURE_DESC);
+        Map<Integer, Long> image2Freq = desc.stream().map(this::findMatches)
+                .flatMap(imgList -> IntStream.of(imgList).boxed())
+                .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
+        int[] matches = image2Freq.isEmpty() ? EMPTY_MATCH : new int[image2Freq.size() * 2];
+        int i = 0;
+        for (Map.Entry<Integer, Long> m : image2Freq.entrySet()) {
+            matches[i++] = m.getKey();
+            matches[i++] = m.getValue().intValue();
+        }
+        collector.emit(STREAM_MATCH_IMAGES, input, new Values(frameId, matches));
+        collector.ack(input);
+    }
+
+    private int[] findMatches(float[] desc) {
         double dist = Double.MAX_VALUE;
         int[] matches = EMPTY_MATCH;
-        float[] desc = (float[]) input.getValueByField(FIELD_FEATURE_DESC);
         for (Map.Entry<float[], int[]> e : featDesc2Image.entrySet()) {
             double d = distance(e.getKey(), desc);
             if (d < dist) {
@@ -78,8 +93,7 @@ public class DistCalculator extends BaseRichBolt {
         if (dist > distThreshold) {
             matches = EMPTY_MATCH;
         }
-        collector.emit(STREAM_MATCH_IMAGES, input, new Values(frameId, matches));
-        collector.ack(input);
+        return matches;
     }
 
     private double distance(float[] v1, float[] v2) {
