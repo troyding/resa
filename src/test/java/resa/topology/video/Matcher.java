@@ -8,6 +8,8 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
 import java.io.BufferedReader;
@@ -25,6 +27,8 @@ import static resa.topology.video.Constant.*;
  */
 public class Matcher extends BaseRichBolt {
 
+    private static final Logger LOG = LoggerFactory.getLogger(Matcher.class);
+
     private static final int[] EMPTY_MATCH = new int[0];
     private Map<byte[], int[]> featDesc2Image;
     private OutputCollector collector;
@@ -40,10 +44,10 @@ public class Matcher extends BaseRichBolt {
     }
 
     private void loadIndex(int index, int totalPieces) {
+        int count = 0;
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(this.getClass().getResourceAsStream("/index.txt")))) {
             String line;
-            int count = 0;
             while ((line = reader.readLine()) != null) {
                 if (line.isEmpty() || count++ % totalPieces != index) {
                     continue;
@@ -61,6 +65,8 @@ public class Matcher extends BaseRichBolt {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        LOG.info("taskIndex=" + index + ", totalIndexPieces=" + totalPieces + ", totalIndexEntry=" + count + ", load="
+                + featDesc2Image.size());
     }
 
     @Override
