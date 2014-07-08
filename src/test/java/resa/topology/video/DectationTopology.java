@@ -29,7 +29,7 @@ public class DectationTopology {
         String host = (String) conf.get("redis.host");
         int port = ((Number) conf.get("redis.port")).intValue();
         String queue = (String) conf.get("redis.queue");
-        builder.setSpout("image-input", new ImageSource(host, port, queue), getInt(conf, "spout.parallelism", 1));
+        builder.setSpout("image-input", new ImageSource(host, port, queue), getInt(conf, "vd.spout.parallelism", 1));
 
         builder.setBolt("feat-ext", new FeatureExtracter(), getInt(conf, "vd.feat-ext.parallelism", 1))
                 .shuffleGrouping("image-input", STREAM_IMG_OUTPUT)

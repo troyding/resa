@@ -37,7 +37,11 @@ public class ImageSender {
 
     public void send2Queue(String videoFile, int fps, int retain) throws IOException {
         List<Integer> array = new ArrayList(IntStream.range(0, fps).boxed().collect(Collectors.toList()));
-        new PushThread().start();
+        for (int i = 0; i < 3; i++) {
+            new PushThread().start();
+        }
+        Random r = new Random();
+        int range = Math.min(fps - retain, retain);
         opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(videoFile);
         try {
             opencv_core.Mat mat = new opencv_core.Mat();
@@ -48,10 +52,12 @@ public class ImageSender {
                 now = System.currentTimeMillis();
                 retainFrames.clear();
                 Collections.shuffle(array);
-                for (int j = 0; j < array.size(); j++) {
+                int count = r.ints(1, retain - range, retain + range).findFirst().getAsInt();
+                for (int j = 0; j < count; j++) {
                     retainFrames.add(array.get(j));
                 }
-                for (int j = 0; j < retain; j++) {
+                System.out.println(count + "@" + now);
+                for (int j = 0; j < fps; j++) {
                     if (!capture.read(mat)) {
                         return;
                     }
