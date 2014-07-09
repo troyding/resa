@@ -52,11 +52,11 @@ public class ImageSender {
                 now = System.currentTimeMillis();
                 retainFrames.clear();
                 Collections.shuffle(array);
-                int count = r.ints(1, retain - range, retain + range).findFirst().getAsInt();
+                int count = retain + (int) ((2 * r.nextDouble() - 1) * range);
                 for (int j = 0; j < count; j++) {
                     retainFrames.add(array.get(j));
                 }
-                System.out.println(count + "@" + now);
+                System.out.println(count + "@" + now + ", qLen=" + dataQueue.size());
                 for (int j = 0; j < fps; j++) {
                     if (!capture.read(mat)) {
                         return;
