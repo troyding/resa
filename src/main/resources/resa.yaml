@@ -15,6 +15,7 @@ resa.metric.approved.names:
   - "__sendqueue send-queue"
   - "__receive recv-queue"
   - "emit"
+  - "duration"
 
 ### optimize
 resa.topology.max.executor.per.worker: 5
@@ -23,8 +24,8 @@ resa.optimize.interval.secs: 30
 resa.topology.allowed.executor.num: -1
 
 #### scheduler
-resa.scheduler.alloc.class: resa.optimize.SimpleGeneralAllocCalculator
-resa.scheduler.decision.class: resa.scheduler.DefaultDecisionMaker
+resa.scheduler.alloc.class: "resa.optimize.SimpleGeneralAllocCalculator"
+resa.scheduler.decision.class: "resa.scheduler.DefaultDecisionMaker"
 
 ####migrate
 resa.comp.checkpoint.interval.sec: 30
