@@ -4,6 +4,7 @@ import backtype.storm.generated.StormTopology;
 import resa.optimize.AllocResult;
 import resa.util.ConfigUtil;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -25,7 +26,12 @@ public class OnceAdjustMaker implements DecisionMaker {
     public Map<String, Integer> make(AllocResult newAllocResult, Map<String, Integer> currAlloc) {
         if (!adjust && now() - startTime > minAdjustInterval) {
             adjust = true;
-            return newAllocResult.currOptAllocation;
+            Map<String, Integer> ret = new HashMap<>();
+            ret.put("image-input", 2);
+            ret.put("feat-ext", 10);
+            ret.put("matcher", 11);
+            ret.put("aggregater", 1);
+            return ret;
         }
         return null;
     }
