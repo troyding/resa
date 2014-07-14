@@ -42,12 +42,12 @@ public class FeatureExtracter extends BaseRichBolt {
         IplImage image = cvDecodeImage(cvMat(1, imgBytes.length, CV_8UC1, new BytePointer(imgBytes)));
         KeyPoint points = new KeyPoint();
         Mat featureDesc = new Mat();
+        Mat matImg = new Mat(image);
+        sift.detect(matImg, points);
+        sift.compute(matImg, points, featureDesc);
         try {
-            Mat matImg = new Mat(image);
-            sift.detect(matImg, points);
-            sift.compute(matImg, points, featureDesc);
-        } finally {
             cvReleaseImage(image);
+        } catch (Exception e) {
         }
         int rows = featureDesc.rows();
         List<byte[]> selected = new ArrayList<>(rows);
