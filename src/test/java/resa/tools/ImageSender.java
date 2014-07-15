@@ -40,7 +40,7 @@ public class ImageSender {
         for (int i = 0; i < 3; i++) {
             new PushThread().start();
         }
-        Random r = new Random();
+        Random rand = new Random();
         int range = Math.min(fps - retain, retain);
         opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(videoFile);
         try {
@@ -49,13 +49,13 @@ public class ImageSender {
             long now;
             Set<Integer> retainFrames = new HashSet<>();
             while (true) {
-                now = System.currentTimeMillis();
-                retainFrames.clear();
                 Collections.shuffle(array);
-                int count = retain + (int) ((2 * r.nextDouble() - 1) * range);
+                int count = retain + (int) ((2 * rand.nextDouble() - 1) * range);
+                retainFrames.clear();
                 for (int j = 0; j < count; j++) {
                     retainFrames.add(array.get(j));
                 }
+                now = System.currentTimeMillis();
                 System.out.println(count + "@" + now + ", qLen=" + dataQueue.size());
                 for (int j = 0; j < fps; j++) {
                     if (!capture.read(mat)) {

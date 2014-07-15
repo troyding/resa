@@ -12,17 +12,12 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import backtype.storm.utils.RotatingMap;
 import backtype.storm.utils.Utils;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import resa.metrics.RedisMetricsCollector;
-import resa.migrate.Persistable;
 import resa.topology.TopologyWithSleepBolt.TASentenceSpout;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -69,7 +64,7 @@ public class WordCountTopology {
         }
     }
 
-    public static class WordCount extends BaseBasicBolt implements Persistable {
+    public static class WordCount extends BaseBasicBolt {
         private static final long serialVersionUID = 4905347466083499207L;
         private int numBuckets = 6;
         private RotatingMap<String, Integer> counters;
@@ -109,17 +104,6 @@ public class WordCountTopology {
             System.out.println("Word Counter cleanup");
         }
 
-        @Override
-        public void save(Kryo kryo, Output output) throws IOException {
-            output.writeInt(numBuckets);
-            for (int i = 0; i < numBuckets; i++) {
-                kryo.writeClassAndObject(output, counters.rotate());
-            }
-        }
-
-        @Override
-        public void read(Kryo kryo, Input input) throws IOException {
-        }
     }
 
     public static void main(String[] args) throws Exception {
