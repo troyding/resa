@@ -73,7 +73,7 @@ public class Matcher extends BaseRichBolt {
     public void execute(Tuple input) {
         String frameId = input.getStringByField(FIELD_FRAME_ID);
         List<byte[]> desc = (List<byte[]>) input.getValueByField(FIELD_FEATURE_DESC);
-        Map<Integer, Long> image2Freq = desc.stream().map(this::findMatches)
+        Map<Integer, Long> image2Freq = desc.stream().flatMap(imgDesc -> findMatches(imgDesc).stream())
                 .flatMap(imgList -> IntStream.of(imgList).boxed())
                 .collect(Collectors.groupingBy(i -> i, Collectors.counting()));
         int[] matches = image2Freq.isEmpty() ? EMPTY_MATCH : new int[image2Freq.size() * 2];
@@ -86,18 +86,13 @@ public class Matcher extends BaseRichBolt {
         collector.ack(input);
     }
 
-    private int[] findMatches(byte[] desc) {
-        double dist = Double.MAX_VALUE;
-        int[] matches = EMPTY_MATCH;
+    private List<int[]> findMatches(byte[] desc) {
+        List<int[]> matches = new ArrayList<>();
         for (Map.Entry<byte[], int[]> e : featDesc2Image.entrySet()) {
             double d = distance(e.getKey(), desc);
-            if (d < dist) {
-                dist = d;
-                matches = e.getValue();
+            if (d < distThreshold) {
+                matches.add(e.getValue());
             }
-        }
-        if (dist > distThreshold) {
-            matches = EMPTY_MATCH;
         }
         return matches;
     }
