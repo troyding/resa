@@ -9,7 +9,6 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.topology.TopologyBuilder;
 import resa.metrics.RedisMetricsCollector;
 import resa.topology.ResaTopologyBuilder;
-import resa.topology.fp.SentenceSpout;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
@@ -33,6 +32,7 @@ public class SimulatedTopology {
         builder.setSpout("input", new SimulatedSpout(host, port, queue), ConfigUtil.getInt(conf,
                 "simulate.spout.parallelism", 1));
         int boltCount = ConfigUtil.getInt(conf, "simulate.bolt.count", 1);
+        long totalComputeTime = 0;
         for (int i = 1; i <= boltCount; i++) {
             long computeTime = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".compute-time", 1);
             int parallelism = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".parallelism", 1);
@@ -40,8 +40,9 @@ public class SimulatedTopology {
             String lastComp = i == 1 ? "input" : "bolt-" + (i - 1);
             builder.setBolt("bolt-" + i, new SimulatedBolt(computeTime), parallelism).shuffleGrouping(lastComp)
                     .setNumTasks(numTasks);
+            totalComputeTime += computeTime;
         }
-
+        conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, totalComputeTime * 3);
         return builder.createTopology();
     }
 
