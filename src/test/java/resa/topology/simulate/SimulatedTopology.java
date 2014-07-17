@@ -30,8 +30,8 @@ public class SimulatedTopology {
         int port = ConfigUtil.getInt(conf, "redis.port", 6379);
         String queue = (String) conf.get("redis.queue");
 
-        builder.setSpout("input", new SentenceSpout(host, port, queue),
-                ConfigUtil.getInt(conf, "simulate.spout.parallelism", 1));
+        builder.setSpout("input", new SimulatedSpout(host, port, queue), ConfigUtil.getInt(conf,
+                "simulate.spout.parallelism", 1));
         int boltCount = ConfigUtil.getInt(conf, "simulate.bolt.count", 1);
         for (int i = 1; i <= boltCount; i++) {
             long computeTime = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".compute-time", 1);
