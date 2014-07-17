@@ -37,7 +37,7 @@ public class SimulatedTopology {
             long computeTime = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".compute-time", 1);
             int parallelism = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".parallelism", 1);
             int numTasks = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".tasks", parallelism);
-            String lastComp = i == 0 ? "input" : "bolt-" + (i - 1);
+            String lastComp = i == 1 ? "input" : "bolt-" + (i - 1);
             builder.setBolt("bolt-" + i, new SimulatedBolt(computeTime), parallelism).shuffleGrouping(lastComp)
                     .setNumTasks(numTasks);
         }
