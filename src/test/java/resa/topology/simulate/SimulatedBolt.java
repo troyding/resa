@@ -34,7 +34,7 @@ public class SimulatedBolt extends BaseRichBolt {
         long now = System.nanoTime();
         do {
             for (int i = 0; i < 10; i++) {
-                Math.sqrt(Math.random() * Integer.MAX_VALUE);
+                Math.atan(Math.sqrt(Math.random() * Integer.MAX_VALUE));
             }
         } while ((cost = (System.nanoTime() - now)) > 0 && cost < exp);
         collector.emit(tuple.getValues());
