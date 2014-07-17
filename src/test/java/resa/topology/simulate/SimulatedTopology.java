@@ -34,7 +34,7 @@ public class SimulatedTopology {
         int boltCount = ConfigUtil.getInt(conf, "simulate.bolt.count", 1);
         long totalComputeTime = 0;
         for (int i = 1; i <= boltCount; i++) {
-            long computeTime = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".compute-time", 1);
+            double computeTime = ConfigUtil.getDouble(conf, "simulate.bolt." + i + ".compute-time", 1);
             int parallelism = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".parallelism", 1);
             int numTasks = ConfigUtil.getInt(conf, "simulate.bolt." + i + ".tasks", parallelism);
             String lastComp = i == 1 ? "input" : "bolt-" + (i - 1);
