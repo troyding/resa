@@ -13,15 +13,18 @@ import java.util.Map;
  */
 public class SimulatedBolt extends TASleepBolt {
 
-    public SimulatedBolt() {
+    public SimulatedBolt(long computeTime) {
+        this.computeTime = computeTime;
     }
 
     private OutputCollector collector;
+    private long computeTime;
 
     @Override
     public void prepare(Map map, TopologyContext context, OutputCollector outputCollector) {
         super.prepare(map, context, outputCollector);
         this.collector = outputCollector;
+        setIntervalSupplier(() -> computeTime);
     }
 
     @Override

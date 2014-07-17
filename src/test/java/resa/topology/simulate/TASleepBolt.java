@@ -43,7 +43,7 @@ public abstract class TASleepBolt extends BaseRichBolt {
     private void performSleep(long interval) {
         long stop = System.currentTimeMillis() + interval;
         do {
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 100; i++) {
                 Math.sqrt(Math.random() * Integer.MAX_VALUE);
             }
         } while (System.currentTimeMillis() < stop);
