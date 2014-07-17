@@ -20,7 +20,7 @@ public class SimulatedSpout extends RedisQueueSpout {
         for (int i = 0; i < 1000; i++) {
             sb.append(text);
         }
-        collector.emit(new Values(sb.toString()));
+        collector.emit(new Values(sb.toString()), "");
     }
 
 }
