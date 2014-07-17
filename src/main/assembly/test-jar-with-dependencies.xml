@@ -27,10 +27,10 @@
                 <exclude>org.apache.zookeeper:*</exclude>
                 <exclude>hiccp:*</exclude>
                 <exclude>com.twitter:*</exclude>
-                <exclude>org.apache.http*:*</exclude>
+                <exclude>org.apache.httpcompontents:*</exclude>
                 <exclude>io.netty:*</exclude>
                 <exclude>clout:*</exclude>
-                <!--<exclude>commons-*:*</exclude>-->
+                <exclude>commons-*:*</exclude>
                 <exclude>com.esotericsoftware.*:*</exclude>
                 <exclude>clj-*:*</exclude>
                 <exclude>org.jgrapht:*</exclude>
