@@ -34,7 +34,7 @@ public class SimulatedBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         long cost;
-        long exp = Math.min(generator.nextPoisson(lambda) * 1_000_000L + 1, bound);
+        long exp = Math.min((long) (-Math.log(Math.random()) * lambda) * 1_000_000L, bound);
         long now = System.nanoTime();
         do {
             for (int i = 0; i < 10; i++) {
