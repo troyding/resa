@@ -6,7 +6,6 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
-import org.apache.commons.math3.random.RandomDataGenerator;
 
 import java.util.Map;
 
@@ -21,13 +20,11 @@ public class SimulatedBolt extends BaseRichBolt {
 
     private OutputCollector collector;
     private double lambda;
-    private RandomDataGenerator generator;
     private long bound;
 
     @Override
     public void prepare(Map map, TopologyContext context, OutputCollector outputCollector) {
         this.collector = outputCollector;
-        generator = new RandomDataGenerator();
         bound = (long) (lambda * 10 * 1_000_000L);
     }
 
