@@ -38,7 +38,7 @@ public class SimulatedBolt extends BaseRichBolt {
                 Math.atan(Math.sqrt(Math.random() * Integer.MAX_VALUE));
             }
         } while ((cost = (System.nanoTime() - now)) > 0 && cost < exp);
-        collector.emit(tuple.getValues());
+        collector.emit(tuple, tuple.getValues());
         collector.ack(tuple);
     }
 
