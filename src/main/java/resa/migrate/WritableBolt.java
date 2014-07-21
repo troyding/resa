@@ -1,10 +1,12 @@
 package resa.migrate;
 
+import backtype.storm.Config;
 import backtype.storm.serialization.SerializationFactory;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichBolt;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,13 +14,15 @@ import resa.topology.DelegatedBolt;
 import resa.util.ConfigUtil;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Created by ding on 14-6-7.
@@ -30,6 +34,7 @@ public class WritableBolt extends DelegatedBolt {
     private transient Map<String, Object> conf;
     private transient Kryo kryo;
     private transient Map<String, Object> dataRef;
+    private Path loaclDataPath;
 
     public WritableBolt(IRichBolt delegate) {
         super(delegate);
@@ -41,12 +46,42 @@ public class WritableBolt extends DelegatedBolt {
         kryo = SerializationFactory.getKryo(conf);
         LOG.info("Bolt " + getDelegate().getClass() + " need persist");
         dataRef = getDataRef(context);
-        loadData();
+        loaclDataPath = Paths.get((String) conf.get(Config.STORM_LOCAL_DIR), "data", context.getStormId());
+        if (!Files.exists(loaclDataPath)) {
+            try {
+                Files.createDirectory(loaclDataPath);
+            } catch (FileAlreadyExistsException e) {
+            } catch (IOException e) {
+                loaclDataPath = null;
+                LOG.warn("Cannot create data path: " + loaclDataPath);
+            }
+        }
+        if (loaclDataPath != null) {
+            loaclDataPath = loaclDataPath.resolve(String.format("task-%03d.data", context.getThisTaskId()));
+        } else {
+            LOG.warn("");
+        }
+        seekAndLoadTaskData();
         int checkpointInt = ConfigUtil.getInt(conf, "resa.comp.checkpoint.interval.sec", 30);
         if (checkpointInt > 0) {
             context.registerMetric("serialized", this::createCheckpointAndGetSize, checkpointInt);
         }
         super.prepare(conf, context, outputCollector);
+    }
+
+    private void seekAndLoadTaskData() {
+        InputStream dataSource = null;
+        if (Files.exists(loaclDataPath)) {
+            try {
+                dataSource = Files.newInputStream(loaclDataPath);
+            } catch (IOException e) {
+            }
+        } else {
+            dataSource = RedisInputStream.create(null, 0, null);
+        }
+        if (dataSource != null) {
+            loadData(dataSource);
+        }
     }
 
     private static Map<String, Object> getDataRef(TopologyContext context) {
@@ -60,13 +95,11 @@ public class WritableBolt extends DelegatedBolt {
     }
 
     private Long createCheckpointAndGetSize() {
-        Long size = null;
-        if (!dataRef.isEmpty()) {
-            Path file = Paths.get(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString());
-            try (Output out = new Output(Files.newOutputStream(file))) {
-                kryo.writeObject(out, dataRef);
-                size = Files.size(file);
-                Files.deleteIfExists(file);
+        Long size = -1L;
+        if (!dataRef.isEmpty() && loaclDataPath != null) {
+            try {
+                writeData(Files.newOutputStream(loaclDataPath));
+                size = Files.size(loaclDataPath);
             } catch (IOException e) {
                 LOG.warn("Save bolt failed", e);
             }
@@ -74,14 +107,30 @@ public class WritableBolt extends DelegatedBolt {
         return size;
     }
 
-    private void loadData() {
+    private void loadData(InputStream in) {
+        Input kryoIn = new Input(in);
+        int size = kryoIn.readInt();
+        for (int i = 0; i < size; i++) {
+            dataRef.put(kryoIn.readString(), kryo.readClassAndObject(kryoIn));
+        }
+        kryoIn.close();
+    }
+
+    private void writeData(OutputStream out) {
+        Output kryoOut = new Output(out);
+        kryoOut.writeInt(dataRef.size());
+        dataRef.forEach((k, v) -> {
+            kryoOut.writeString(k);
+            kryo.writeClassAndObject(kryoOut, v);
+        });
+        kryoOut.close();
     }
 
     @Override
     public void cleanup() {
         super.cleanup();
         if (!dataRef.isEmpty()) {
-            kryo.writeObject(null, dataRef);
+            writeData(null);
         }
     }
 }
