@@ -48,7 +48,7 @@ public class RedisInputStream extends InputStream {
                 listPos++;
             }
             int size = Math.min(remain, buf.length - pos);
-            System.arraycopy(b, off + (len - remain), buf, pos, size);
+            System.arraycopy(buf, pos, b, off + (len - remain), size);
             remain -= size;
             pos += size;
             if (pos == buf.length) {

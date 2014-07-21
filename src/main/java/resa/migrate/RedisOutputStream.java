@@ -48,7 +48,7 @@ public class RedisOutputStream extends OutputStream {
         int retain = len;
         while (retain > 0) {
             int copySize = Math.min(retain, buf.length - pos);
-            System.arraycopy(b, off + (len - retain), b, pos, copySize);
+            System.arraycopy(b, off + (len - retain), buf, pos, copySize);
             retain -= copySize;
             pos += copySize;
             if (pos == buf.length) {
