@@ -9,6 +9,7 @@ import backtype.storm.tuple.Tuple;
 import org.apache.log4j.Logger;
 import resa.util.ConfigUtil;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,7 +21,7 @@ public class Detector extends BaseRichBolt implements Constant {
 
     private static final Logger LOG = Logger.getLogger(Detector.class);
 
-    private static class Entry {
+    private static class Entry implements Serializable {
         int count = 0;
         boolean detectedBySelf;
         int refCount = 0;
@@ -85,11 +86,14 @@ public class Detector extends BaseRichBolt implements Constant {
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.patterns = new HashMap<>();
+        String patternData = "pattern";
+        this.patterns = (Map<WordList, Entry>) context.getTaskData(patternData);
+        if (this.patterns == null) {
+            context.setTaskData(patternData, (this.patterns = new HashMap<>()));
+        }
         this.collector = collector;
         this.threshold = ConfigUtil.getInt(stormConf, THRESHOLD_PROP, 20);
-        LOG.debug(
-                "In DetectorNew, threshold: " + threshold);
+        LOG.info("In Detector, threshold: " + threshold);
     }
 
     /////////////////// State Transition Graph, Implementation III/////////////////////////////
