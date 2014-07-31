@@ -122,90 +122,97 @@ public class Detector extends BaseRichBolt implements Constant {
 
     @Override
     public void execute(Tuple input) {
-        WordList pattern = (WordList) input.getValueByField(PATTERN_FIELD);
-        Entry entry = patterns.computeIfAbsent(pattern, (k) -> new Entry());
+        //doneTODO:
+        //WordList pattern = (WordList) input.getValueByField(PATTERN_FIELD);
 
-        if (!input.getSourceStreamId().equals(FEEDBACK_STREAM)) {
-            ///Pattern Count Stream, only affect pattern count
-            ///We only change IncRef and DecRef at two events: [++count == threshold] and [--count == threshold-1]
-            if (input.getBooleanByField(IS_ADD_FIELD)) {
-                entry.incCountAndGet();
-                LOG.debug(
-                        "In DetectorNew(default), cntInc: " + pattern + "," + entry.reportCnt());
-                if (entry.getCount() == threshold) {
-                    incRefToSubPatternExcludeSelf(pattern.getWords(), collector, input);
+        ArrayList<WordList> wordListArrayList = (ArrayList<WordList>) input.getValueByField(PATTERN_FIELD);
+
+        wordListArrayList.forEach((pattern) -> {
+
+            Entry entry = patterns.computeIfAbsent(pattern, (k) -> new Entry());
+
+            if (!input.getSourceStreamId().equals(FEEDBACK_STREAM)) {
+                ///Pattern Count Stream, only affect pattern count
+                ///We only change IncRef and DecRef at two events: [++count == threshold] and [--count == threshold-1]
+                if (input.getBooleanByField(IS_ADD_FIELD)) {
+                    entry.incCountAndGet();
                     LOG.debug(
-                            "In DetectorNew(default), cntInc: " + pattern + ",satisfy thresh and incRef");
+                            "In DetectorNew(default), cntInc: " + pattern + "," + entry.reportCnt());
+                    if (entry.getCount() == threshold) {
+                        incRefToSubPatternExcludeSelf(pattern.getWords(), collector, input);
+                        LOG.debug(
+                                "In DetectorNew(default), cntInc: " + pattern + ",satisfy thresh and incRef");
+                    }
+                } else {
+                    entry.decCountAndGet();
+                    LOG.debug(
+                            "In DetectorNew(default), cntDec: " + pattern + "," + entry.reportCnt());
+                    if (entry.getCount() == threshold - 1) {
+                        decRefToSubPatternExcludeSelf(pattern.getWords(), collector, input);
+                        LOG.debug(
+                                "In DetectorNew(default), cntDec: " + pattern + ",dissatisfy thresh and decRef");
+                    }
+                }
+
+                ///We separate the action of update refCount and update states
+                if (!entry.isMFPattern()) {///entry.isMFPattern == false
+                    if (entry.getCount() >= threshold && !entry.hasReference()) {
+                        ///State (F, F | F) -> (T, F | T),
+                        ///State (T, F | F) -> (T, F | T),
+                        ///[output pattern, T]
+                        entry.setMFPattern(true);
+                        collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, true));
+                        LOG.debug(
+                                "In DetectorNew(default), set isMFP" + pattern + "," + entry.reportCnt());
+                    }
+                } else {///entry.isMFPattern == true
+                    if (entry.hasReference() || (!entry.hasReference() && entry.getCount() < threshold)) {
+                        ///State (T, T | T) -> (F, T | F)
+                        ///State (T, T | T) -> (T, T | F)
+                        ///State (T, F | T) -> (F, F | F)
+                        ///[output pattern, F]
+                        entry.setMFPattern(false);
+                        collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, false));
+
+                        LOG.debug(
+                                "In DetectorNew(default), cancel isMFP" + pattern + "," + entry.reportCnt());
+                    }
                 }
             } else {
-                entry.decCountAndGet();
-                LOG.debug(
-                        "In DetectorNew(default), cntDec: " + pattern + "," + entry.reportCnt());
-                if (entry.getCount() == threshold - 1) {
-                    decRefToSubPatternExcludeSelf(pattern.getWords(), collector, input);
+                ///Feedback_STREAM, only affect refCount, also check states.
+                ///State (F, F | F) <--> (F, T | F)
+                ///State (T, F | F) <--> (T, T | F)
+                ///State (T, F | T) <--> (T, T | T)
+                if (input.getBooleanByField(IS_ADD_FIELD)) {
+                    entry.incRefCountAndGet();
                     LOG.debug(
-                            "In DetectorNew(default), cntDec: " + pattern + ",dissatisfy thresh and decRef");
+                            "In DetectorNew(FB), incReferenceCnt: " + pattern + ", " + entry.reportCnt());
+                } else {
+                    entry.decRefCountAndGet();
+                    LOG.debug(
+                            "In DetectorNew(FB), DecReferenceCnt: " + pattern + ", " + entry.reportCnt());
                 }
-            }
 
-            ///We separate the action of update refCount and update states
-            if (!entry.isMFPattern()) {///entry.isMFPattern == false
-                if (entry.getCount() >= threshold && !entry.hasReference()) {
-                    ///State (F, F | F) -> (T, F | T),
-                    ///State (T, F | F) -> (T, F | T),
-                    ///[output pattern, T]
+                ///TODO: please double check if we need to anchor tuple here?
+                ///update states
+                if (entry.hasReference() && entry.isMFPattern()) {
+                    ///State [*, T | T] --> (*, T | F), update states and output F
+                    entry.setMFPattern(false);
+                    collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, false));
+                    LOG.debug(
+                            "In DetectorNew(FB), cancel isMFP: " + pattern + ", " + entry.reportCnt());
+                } else if (!entry.hasReference() && !entry.isMFPattern() && entry.getCount() >= threshold) {
+                    ///State [T, F | F] --> (T, F | T) update states and output T
                     entry.setMFPattern(true);
                     collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, true));
                     LOG.debug(
-                            "In DetectorNew(default), set isMFP" + pattern + "," + entry.reportCnt());
-                }
-            } else {///entry.isMFPattern == true
-                if (entry.hasReference() || (!entry.hasReference() && entry.getCount() < threshold)) {
-                    ///State (T, T | T) -> (F, T | F)
-                    ///State (T, T | T) -> (T, T | F)
-                    ///State (T, F | T) -> (F, F | F)
-                    ///[output pattern, F]
-                    entry.setMFPattern(false);
-                    collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, false));
-
-                    LOG.debug(
-                            "In DetectorNew(default), cancel isMFP" + pattern + "," + entry.reportCnt());
+                            "In DetectorNew(FB), set isMFP" + pattern + "," + entry.reportCnt());
                 }
             }
-        } else {
-            ///Feedback_STREAM, only affect refCount, also check states.
-            ///State (F, F | F) <--> (F, T | F)
-            ///State (T, F | F) <--> (T, T | F)
-            ///State (T, F | T) <--> (T, T | T)
-            if (input.getBooleanByField(IS_ADD_FIELD)) {
-                entry.incRefCountAndGet();
-                LOG.debug(
-                        "In DetectorNew(FB), incReferenceCnt: " + pattern + ", " + entry.reportCnt());
-            } else {
-                entry.decRefCountAndGet();
-                LOG.debug(
-                        "In DetectorNew(FB), DecReferenceCnt: " + pattern + ", " + entry.reportCnt());
+            if (entry.unused()) {
+                patterns.remove(pattern);
             }
-
-            ///TODO: please double check if we need to anchor tuple here?
-            ///update states
-            if (entry.hasReference() && entry.isMFPattern()) {
-                ///State [*, T | T] --> (*, T | F), update states and output F
-                entry.setMFPattern(false);
-                collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, false));
-                LOG.debug(
-                        "In DetectorNew(FB), cancel isMFP: " + pattern + ", " + entry.reportCnt());
-            } else if (!entry.hasReference() && !entry.isMFPattern() && entry.getCount() >= threshold) {
-                ///State [T, F | F] --> (T, F | T) update states and output T
-                entry.setMFPattern(true);
-                collector.emit(REPORT_STREAM, input, Arrays.asList(pattern, true));
-                LOG.debug(
-                        "In DetectorNew(FB), set isMFP" + pattern + "," + entry.reportCnt());
-            }
-        }
-        if (entry.unused()) {
-            patterns.remove(pattern);
-        }
+        });
         collector.ack(input);
     }
 
@@ -220,6 +227,7 @@ public class Detector extends BaseRichBolt implements Constant {
     private void adjRefToSubPatternExcludeSelf(int[] wordIds, OutputCollector collector, Tuple input, boolean adj) {
         int n = wordIds.length;
         int[] buffer = new int[n];
+        ArrayList<WordList>[] wordListForTargetTask = new ArrayList[targetTasks.size()];
         ///Note that here we exclude itself as one of the sub-patterns
         ///for (int i = 1; i < (1 << n); i++) {
         for (int i = 1; i < (1 << n) - 1; i++) {
@@ -229,13 +237,30 @@ public class Detector extends BaseRichBolt implements Constant {
                     buffer[k++] = wordIds[j];
                 }
             }
-            collector.emit(FEEDBACK_STREAM, input, Arrays.asList(new WordList(Arrays.copyOf(buffer, k)), adj));
+            //doneTODO:
+            //collector.emit(FEEDBACK_STREAM, input, Arrays.asList(new WordList(Arrays.copyOf(buffer, k)), adj));
+            WordList wl = new WordList(Arrays.copyOf(buffer, k));
+            int targetIndex = WordList.getPartition(targetTasks.size(), wl);
+            if (wordListForTargetTask[targetIndex] == null) {
+                wordListForTargetTask[targetIndex] = new ArrayList<>();
+            }
+            wordListForTargetTask[targetIndex].add(wl);
+        }
+        for (int i = 0; i < wordListForTargetTask.length; i++) {
+            if (wordListForTargetTask[i] != null && wordListForTargetTask[i].size() > 0) {
+                collector.emitDirect(
+                        targetTasks.get(i),
+                        FEEDBACK_STREAM,
+                        input, Arrays.asList(wordListForTargetTask[i], adj));
+            }
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(REPORT_STREAM, new Fields(PATTERN_FIELD, IS_ADD_MFP));
-        declarer.declareStream(FEEDBACK_STREAM, new Fields(PATTERN_FIELD, IS_ADD_FIELD));
+        //declarer.declareStream(FEEDBACK_STREAM, new Fields(PATTERN_FIELD, IS_ADD_FIELD));
+        //doneTODO: add true for direct grouping
+        declarer.declareStream(FEEDBACK_STREAM, true, new Fields(PATTERN_FIELD, IS_ADD_FIELD));
     }
 }

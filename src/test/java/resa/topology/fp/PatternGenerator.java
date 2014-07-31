@@ -10,6 +10,7 @@ import backtype.storm.tuple.Tuple;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -60,6 +61,8 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
     private void emitSubPattern(int[] wordIds, OutputCollector collector, Tuple input) {
         int n = wordIds.length;
         int[] buffer = new int[n];
+        ArrayList<WordList>[] wordListForTargetTask = new ArrayList[targetTasks.size()];
+
         for (int i = 1; i < (1 << n); i++) {
             int k = 0;
             for (int j = 0; j < n; j++) {
@@ -67,8 +70,24 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
                     buffer[k++] = wordIds[j];
                 }
             }
-            collector.emit(input, Arrays.asList(new WordList(Arrays.copyOf(buffer, k)),
-                    input.getValueByField(IS_ADD_FIELD)));
+            //doneTODO:
+            ///collector.emit(input, Arrays.asList(new WordList(Arrays.copyOf(buffer, k)),
+            ///input.getValueByField(IS_ADD_FIELD)));
+            WordList wl = new WordList(Arrays.copyOf(buffer, k));
+            int targetIndex = WordList.getPartition(targetTasks.size(), wl);
+            if (wordListForTargetTask[targetIndex] == null) {
+                wordListForTargetTask[targetIndex] = new ArrayList<>();
+            }
+            wordListForTargetTask[targetIndex].add(wl);
+        }
+        for (int i = 0; i < wordListForTargetTask.length; i++) {
+            if (wordListForTargetTask[i] != null && wordListForTargetTask[i].size() > 0) {
+                collector.emitDirect(
+                        targetTasks.get(i),
+                        input,
+                        Arrays.asList(wordListForTargetTask[i],
+                                input.getValueByField(IS_ADD_FIELD)));
+            }
         }
     }
 
@@ -78,6 +97,8 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields(PATTERN_FIELD, IS_ADD_FIELD));
+        //declarer.declare(new Fields(PATTERN_FIELD, IS_ADD_FIELD));
+        //doneTODO: add true for direct grouping
+        declarer.declare(true, new Fields(PATTERN_FIELD, IS_ADD_FIELD));
     }
 }
