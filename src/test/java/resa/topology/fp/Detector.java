@@ -10,9 +10,7 @@ import org.apache.log4j.Logger;
 import resa.util.ConfigUtil;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by ding on 14-6-5.
@@ -83,6 +81,7 @@ public class Detector extends BaseRichBolt implements Constant {
     private Map<WordList, Entry> patterns;
     private int threshold;
     private OutputCollector collector;
+    private List<Integer> targetTasks;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -93,6 +92,8 @@ public class Detector extends BaseRichBolt implements Constant {
         }
         this.collector = collector;
         this.threshold = ConfigUtil.getInt(stormConf, THRESHOLD_PROP, 20);
+        targetTasks = context.getComponentTasks(context.getThisComponentId());
+        Collections.sort(targetTasks);
         LOG.info("In Detector, threshold: " + threshold);
     }
 
