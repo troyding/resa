@@ -49,7 +49,7 @@ public class WritableBolt extends DelegatedBolt {
         loaclDataPath = Paths.get((String) conf.get(Config.STORM_LOCAL_DIR), "data", context.getStormId());
         if (!Files.exists(loaclDataPath)) {
             try {
-                Files.createDirectory(loaclDataPath);
+                Files.createDirectories(loaclDataPath);
             } catch (FileAlreadyExistsException e) {
             } catch (IOException e) {
                 LOG.warn("Cannot create data path: " + loaclDataPath, e);
@@ -69,7 +69,7 @@ public class WritableBolt extends DelegatedBolt {
 
     private void seekAndLoadTaskData(String topoId, int taskId) {
         InputStream dataSource = null;
-        if (Files.exists(loaclDataPath)) {
+        if (loaclDataPath != null && Files.exists(loaclDataPath)) {
             try {
                 dataSource = Files.newInputStream(loaclDataPath);
             } catch (IOException e) {
