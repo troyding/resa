@@ -49,19 +49,17 @@ public class WritableBolt extends DelegatedBolt {
         loaclDataPath = Paths.get((String) conf.get(Config.STORM_LOCAL_DIR), "data", context.getStormId());
         if (!Files.exists(loaclDataPath)) {
             try {
-                Files.createDirectory(loaclDataPath);
+                Files.createDirectories(loaclDataPath);
             } catch (FileAlreadyExistsException e) {
             } catch (IOException e) {
+                LOG.warn("Cannot create data path: " + loaclDataPath, e);
                 loaclDataPath = null;
-                LOG.warn("Cannot create data path: " + loaclDataPath);
             }
         }
         if (loaclDataPath != null) {
             loaclDataPath = loaclDataPath.resolve(String.format("task-%03d.data", context.getThisTaskId()));
-        } else {
-            LOG.warn("");
         }
-        seekAndLoadTaskData();
+        seekAndLoadTaskData(context.getStormId(), context.getThisTaskId());
         int checkpointInt = ConfigUtil.getInt(conf, "resa.comp.checkpoint.interval.sec", 30);
         if (checkpointInt > 0) {
             context.registerMetric("serialized", this::createCheckpointAndGetSize, checkpointInt);
@@ -69,15 +67,18 @@ public class WritableBolt extends DelegatedBolt {
         super.prepare(conf, context, outputCollector);
     }
 
-    private void seekAndLoadTaskData() {
+    private void seekAndLoadTaskData(String topoId, int taskId) {
         InputStream dataSource = null;
-        if (Files.exists(loaclDataPath)) {
+        if (loaclDataPath != null && Files.exists(loaclDataPath)) {
             try {
                 dataSource = Files.newInputStream(loaclDataPath);
             } catch (IOException e) {
             }
         } else {
-            dataSource = RedisInputStream.create(null, 0, null);
+            String queueName = topoId;
+            queueName = String.format("%s-%03d-data", queueName, taskId);
+            dataSource = RedisInputStream.create((String) conf.get("redis.host"),
+                    ConfigUtil.getInt(conf, "redis.port", 6379), queueName);
         }
         if (dataSource != null) {
             loadData(dataSource);

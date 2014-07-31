@@ -1,12 +1,11 @@
 package resa.topology.fp;
 
 import backtype.storm.Config;
-import backtype.storm.LocalCluster;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
 import resa.metrics.RedisMetricsCollector;
-import resa.topology.ResaTopologyBuilder;
+import resa.topology.WritableTopologyBuilder;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
@@ -27,13 +26,10 @@ public class FrequentPatternTopology implements Constant {
         ResaConfig resaConfig = ResaConfig.create();
         resaConfig.putAll(conf);
 
-        TopologyBuilder builder = new ResaTopologyBuilder();
+        TopologyBuilder builder = new WritableTopologyBuilder();
 
         int numWorkers = ConfigUtil.getInt(conf, "fp-worker.count", 1);
-        int numAckers = ConfigUtil.getInt(conf, "fp-acker.count", 1);
-
         resaConfig.setNumWorkers(numWorkers);
-        resaConfig.setNumAckers(numAckers);
 
         String host = (String) conf.get("redis.host");
         int port = ConfigUtil.getInt(conf, "redis.port", 6379);

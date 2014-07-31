@@ -32,4 +32,8 @@ public class WordList implements Serializable {
     public String toString() {
         return Arrays.toString(words);
     }
+
+    public static int getPartition(int numPart, WordList wordList) {
+        return Math.abs(wordList.hashCode()) % numPart;
+    }
 }

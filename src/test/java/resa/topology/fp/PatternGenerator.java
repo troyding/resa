@@ -20,6 +20,7 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
     private OutputCollector collector;
     private Set<String> words;
     private Map<String, Integer> dict;
+    private List<Integer> targetTasks;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -28,7 +29,7 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
         dict = new HashMap<>();
         int id = 0;
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(this.getClass().getResourceAsStream("/dict.txt")))) {
+                new InputStreamReader(this.getClass().getResourceAsStream("/dict-100000.txt")))) {
             String line = null;
             while ((line = reader.readLine()) != null) {
                 dict.put(line, id++);
@@ -36,6 +37,8 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        targetTasks = context.getComponentTasks("detector");
+        Collections.sort(targetTasks);
     }
 
     @Override

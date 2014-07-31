@@ -33,7 +33,7 @@ public class PatternReporter extends BaseRichBolt implements Constant {
         int id = 0;
         invdict = new HashMap<>();
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(this.getClass().getResourceAsStream("/dict.txt")))) {
+                new InputStreamReader(this.getClass().getResourceAsStream("/dict-100000.txt")))) {
             String line = null;
             while ((line = reader.readLine()) != null) {
                 invdict.put(id++, line);
@@ -47,7 +47,7 @@ public class PatternReporter extends BaseRichBolt implements Constant {
     public void execute(Tuple input) {
         WordList wordList = (WordList) input.getValueByField(PATTERN_FIELD);
         List<String> words = IntStream.of(wordList.getWords()).mapToObj(invdict::get).collect(Collectors.toList());
-        LOG.info("In Reporter, " + DateTime.now() + ":" + words + "," + input.getBooleanByField(IS_ADD_MFP));
+        LOG.debug("In Reporter, " + DateTime.now() + ":" + words + "," + input.getBooleanByField(IS_ADD_MFP));
         //TODO: use tuple tree to judge if the update belongs to the same tuple input events.
         collector.ack(input);
     }
