@@ -28,7 +28,7 @@ public class RandomSentenceSpout extends BaseRichSpout {
 
     @Override
     public void nextTuple() {
-        Utils.sleep((_rand.nextInt(20) + 1) * 1000);
+        Utils.sleep(_rand.nextInt(10) + 10);
         String[] sentences = new String[]{
                 "the cow jumped over the moon",
                 "an apple a day keeps the doctor away",

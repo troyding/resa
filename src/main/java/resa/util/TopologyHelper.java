@@ -48,6 +48,26 @@ public class TopologyHelper {
         return null;
     }
 
+    public static Map<Integer, String> getTask2Host(Map<String, Object> conf, String topoId) {
+        NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+        try {
+            Nimbus.Client nimbus = nimbusClient.getClient();
+            TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
+            Map<Integer, String> task2Host = new HashMap<>();
+            topoInfo.get_executors().forEach(e -> {
+                ExecutorInfo eInfo = e.get_executor_info();
+                for (int i = eInfo.get_task_start(); i <= eInfo.get_task_end(); i++) {
+                    task2Host.put(i, e.get_host());
+                }
+            });
+            return task2Host;
+        } catch (Exception e) {
+        } finally {
+            nimbusClient.close();
+        }
+        return null;
+    }
+
     /**
      * Kill a specified topology.
      *

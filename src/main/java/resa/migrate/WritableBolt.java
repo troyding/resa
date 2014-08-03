@@ -23,6 +23,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Created by ding on 14-6-7.
@@ -30,11 +32,14 @@ import java.util.Map;
 public class WritableBolt extends DelegatedBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(WritableBolt.class);
+    private static final Map<Integer, Object> DATA_HOLDER = new ConcurrentHashMap<>();
 
     private transient Map<String, Object> conf;
     private transient Kryo kryo;
     private transient Map<String, Object> dataRef;
     private Path loaclDataPath;
+    private transient ExecutorService threadPool;
+    private int myTaskId;
 
     public WritableBolt(IRichBolt delegate) {
         super(delegate);
@@ -43,6 +48,7 @@ public class WritableBolt extends DelegatedBolt {
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector outputCollector) {
         this.conf = conf;
+        this.myTaskId = context.getThisTaskId();
         kryo = SerializationFactory.getKryo(conf);
         LOG.info("Bolt " + getDelegate().getClass() + " need persist");
         dataRef = getDataRef(context);
@@ -62,26 +68,34 @@ public class WritableBolt extends DelegatedBolt {
         seekAndLoadTaskData(context.getStormId(), context.getThisTaskId());
         int checkpointInt = ConfigUtil.getInt(conf, "resa.comp.checkpoint.interval.sec", 30);
         if (checkpointInt > 0) {
-            context.registerMetric("serialized", this::createCheckpointAndGetSize, checkpointInt);
+            context.registerMetric("serialized", () -> createCheckpointAndGetSize(context), checkpointInt);
         }
+        this.threadPool = context.getSharedExecutor();
         super.prepare(conf, context, outputCollector);
     }
 
     private void seekAndLoadTaskData(String topoId, int taskId) {
-        InputStream dataSource = null;
-        if (loaclDataPath != null && Files.exists(loaclDataPath)) {
-            try {
-                dataSource = Files.newInputStream(loaclDataPath);
-            } catch (IOException e) {
-            }
+        /* load data:
+           1. find in memory, maybe data migration was not required
+           2. TODO: retrieve data from src worker using TCP
+           3. try to load checkpoint from redis or other distributed systems
+        */
+        Object data = DATA_HOLDER.remove(taskId);
+        if (data != null) {
+            dataRef.putAll((Map<String, Object>) data);
         } else {
+            // load checkpoint from redis, create a new Interface later to avoid hard code
             String queueName = topoId;
             queueName = String.format("%s-%03d-data", queueName, taskId);
-            dataSource = RedisInputStream.create((String) conf.get("redis.host"),
+            InputStream dataSource = RedisInputStream.create((String) conf.get("redis.host"),
                     ConfigUtil.getInt(conf, "redis.port", 6379), queueName);
-        }
-        if (dataSource != null) {
-            loadData(dataSource);
+            if (dataSource != null) {
+                try {
+                    loadData(dataSource);
+                } catch (Exception e) {
+                    LOG.warn("load data from " + dataSource + " failed, localDataPath=" + loaclDataPath);
+                }
+            }
         }
     }
 
@@ -95,12 +109,14 @@ public class WritableBolt extends DelegatedBolt {
         return Collections.EMPTY_MAP;
     }
 
-    private Long createCheckpointAndGetSize() {
+    private Long createCheckpointAndGetSize(TopologyContext context) {
         Long size = -1L;
         if (!dataRef.isEmpty() && loaclDataPath != null) {
             try {
-                writeData(Files.newOutputStream(loaclDataPath));
-                size = Files.size(loaclDataPath);
+                size = writeData(Files.newOutputStream(loaclDataPath));
+                String queueName = String.format("%s-%03d-data", context.getStormId(), context.getThisTaskId());
+                threadPool.submit(() -> writeData(new RedisOutputStream((String) conf.get("redis.host"),
+                        ConfigUtil.getInt(conf, "redis.port", 6379), queueName)));
             } catch (IOException e) {
                 LOG.warn("Save bolt failed", e);
             }
@@ -117,21 +133,37 @@ public class WritableBolt extends DelegatedBolt {
         kryoIn.close();
     }
 
-    private void writeData(OutputStream out) {
+    private long writeData(OutputStream out) {
         Output kryoOut = new Output(out);
         kryoOut.writeInt(dataRef.size());
         dataRef.forEach((k, v) -> {
             kryoOut.writeString(k);
             kryo.writeClassAndObject(kryoOut, v);
         });
+        long size = kryoOut.total();
         kryoOut.close();
+        return size;
     }
 
     @Override
     public void cleanup() {
         super.cleanup();
         if (!dataRef.isEmpty()) {
-            writeData(null);
+            saveData();
         }
     }
+
+    private void saveData() {
+        String workerTasks = System.getProperty("new-worker-assignment");
+        if (workerTasks != null && workerTasks.contains(String.valueOf(myTaskId))) {
+            DATA_HOLDER.put(myTaskId, dataRef);
+        } else if (loaclDataPath != null) {
+            try {
+                writeData(Files.newOutputStream(loaclDataPath));
+            } catch (IOException e) {
+                LOG.info("Save data failed", e);
+            }
+        }
+    }
+
 }

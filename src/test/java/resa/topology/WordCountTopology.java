@@ -2,6 +2,7 @@ package resa.topology;
 
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
+import backtype.storm.metric.LoggingMetricsConsumer;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -9,10 +10,8 @@ import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
-import backtype.storm.tuple.Values;
 import backtype.storm.utils.RotatingMap;
 import backtype.storm.utils.Utils;
-import resa.metrics.RedisMetricsCollector;
 import resa.topology.TopologyWithSleepBolt.TASentenceSpout;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
@@ -91,7 +90,7 @@ public class WordCountTopology {
             }
             count++;
             counters.put(word, count);
-            collector.emit(new Values(word, count));
+            //collector.emit(new Values(word, count));
         }
 
         @Override
@@ -116,7 +115,7 @@ public class WordCountTopology {
         ResaConfig resaConfig = ResaConfig.create();
         resaConfig.putAll(conf);
 
-        TopologyBuilder builder = new WritableTopologyBuilder();
+        TopologyBuilder builder = new TopologyBuilder();
 
         if (!ConfigUtil.getBoolean(conf, "spout.redis", false)) {
             builder.setSpout("say", new RandomSentenceSpout(), ConfigUtil.getInt(conf, "spout.parallelism", 1));
@@ -130,9 +129,8 @@ public class WordCountTopology {
         builder.setBolt("split", new SplitSentence(), ConfigUtil.getInt(conf, "split.parallelism", 1))
                 .shuffleGrouping("say");
         builder.setBolt("counter", new WordCount(), ConfigUtil.getInt(conf, "counter.parallelism", 1))
-                .fieldsGrouping("split", new Fields("word")).setNumTasks(32);
-
-        resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
+                .fieldsGrouping("split", new Fields("word")).setNumTasks(3);
+        resaConfig.registerMetricsConsumer(LoggingMetricsConsumer.class);
         StormSubmitter.submitTopology(args[0], resaConfig, builder.createTopology());
     }
 }

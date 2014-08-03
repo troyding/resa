@@ -24,8 +24,12 @@ public class RedisInputStream extends InputStream {
     }
 
     public static RedisInputStream create(String host, int port, String queueName) {
-        Jedis jedis = new Jedis(host, port);
-        return jedis.exists(queueName) ? new RedisInputStream(jedis, queueName) : null;
+        try {
+            Jedis jedis = new Jedis(host, port);
+            return jedis.exists(queueName) ? new RedisInputStream(jedis, queueName) : null;
+        } catch (Exception e) {
+        }
+        return null;
     }
 
     @Override

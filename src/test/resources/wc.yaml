@@ -12,8 +12,7 @@
 
 #true use redis spout, else use random spout
 #default is false
-#spout.redis: false
-spout.redis: true
+spout.redis: false
 
 topology.workers: 3
 
@@ -24,7 +23,7 @@ redis.queue: "tweets"
 
 # maximum amount of time a message has to complete before it's considered failed
 topology.debug: false
-topology.stats.sample.rate: 0.05
+topology.stats.sample.rate: 1.0
 topology.message.timeout.secs: 30
 
 #causion for this parameter, default value is 8
@@ -37,7 +36,7 @@ topology.builtin.metrics.bucket.size.secs: 10
 ## number of executors for each component
 spout.parallelism: 1
 split.parallelism: 5
-counter.parallelism: 2
+counter.parallelism: 3
 
 resa.metric.redis.host: "192.168.0.30"
 resa.metric.redis.port: 6379
