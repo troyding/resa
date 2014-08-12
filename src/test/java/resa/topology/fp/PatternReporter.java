@@ -33,7 +33,7 @@ public class PatternReporter extends BaseRichBolt implements Constant {
         int id = 0;
         invdict = new HashMap<>();
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(this.getClass().getResourceAsStream("/dict-100000.txt")))) {
+                new InputStreamReader(this.getClass().getResourceAsStream((String) stormConf.get(DICT_FILE_PROP))))) {
             String line = null;
             while ((line = reader.readLine()) != null) {
                 invdict.put(id++, line);

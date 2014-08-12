@@ -1,12 +1,20 @@
 package resa.topology.fp;
 
+import backtype.storm.serialization.SerializableSerializer;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
-import org.apache.log4j.Logger;
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.KryoSerializable;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.DefaultSerializers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import resa.util.ConfigUtil;
 
 import java.io.Serializable;
@@ -17,13 +25,25 @@ import java.util.*;
  */
 public class Detector extends BaseRichBolt implements Constant {
 
-    private static final Logger LOG = Logger.getLogger(Detector.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Detector.class);
 
-    private static class Entry implements Serializable {
+    @DefaultSerializer(SerializableSerializer.class)
+    public static class Entry implements Serializable {
         int count = 0;
         boolean detectedBySelf;
         int refCount = 0;
         boolean flagMFPattern = false;
+        long timestamp;
+
+        public Entry(long timestamp) {
+            this.timestamp = timestamp;
+        }
+
+        public long setTimestamp(long timestamp) {
+            long tmp = this.timestamp;
+            this.timestamp = timestamp;
+            return tmp;
+        }
 
         public void setDetectedBySelf(boolean detectedBySelf) {
             this.detectedBySelf = detectedBySelf;
@@ -76,6 +96,7 @@ public class Detector extends BaseRichBolt implements Constant {
         String reportCnt() {
             return String.format(" cnt: %d, refCnt: %d", this.count, this.refCount);
         }
+
     }
 
     private Map<WordList, Entry> patterns;
@@ -83,12 +104,60 @@ public class Detector extends BaseRichBolt implements Constant {
     private OutputCollector collector;
     private List<Integer> targetTasks;
 
+    @DefaultSerializer(DefaultSerializers.KryoSerializableSerializer.class)
+    public static class PatternDB extends LinkedHashMap<WordList, Entry> implements KryoSerializable {
+        private long maxKeep;
+
+        public PatternDB(long maxKeep) {
+            this.maxKeep = maxKeep;
+        }
+
+        public PatternDB() {
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry eldest) {
+            return System.currentTimeMillis() - ((Entry) eldest.getValue()).timestamp > maxKeep;
+        }
+
+        @Override
+        public void write(Kryo kryo, Output output) {
+            output.writeLong(maxKeep);
+            output.writeInt(size());
+            output.writeLong(System.currentTimeMillis());
+            forEach((k, v) -> {
+                kryo.writeClassAndObject(output, k);
+                kryo.writeClassAndObject(output, v);
+            });
+            LOG.info("write out {} patterns", size());
+        }
+
+        @Override
+        public void read(Kryo kryo, Input input) {
+            maxKeep = Long.MAX_VALUE;
+            long maxKeepTmp = input.readLong();
+            int size = input.readInt();
+            long last = input.readLong();
+            // rest timestamp
+            for (int i = 0; i < size; i++) {
+                WordList p = (WordList) kryo.readClassAndObject(input);
+                Entry entry = (Entry) kryo.readClassAndObject(input);
+                put(p, entry);
+            }
+            long toAdd = System.currentTimeMillis() - last + 10000;
+            forEach((k, v) -> v.setTimestamp(v.timestamp + toAdd));
+            maxKeep = maxKeepTmp;
+            LOG.info("read in {} patterns", size);
+        }
+    }
+
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         String patternData = "pattern";
         this.patterns = (Map<WordList, Entry>) context.getTaskData(patternData);
         if (this.patterns == null) {
-            context.setTaskData(patternData, (this.patterns = new HashMap<>()));
+            long maxKeepInterval = ConfigUtil.getInt(stormConf, MAX_KEEP_PROP, 60000);
+            context.setTaskData(patternData, (this.patterns = new PatternDB(maxKeepInterval)));
         }
         this.collector = collector;
         this.threshold = ConfigUtil.getInt(stormConf, THRESHOLD_PROP, 20);
@@ -124,12 +193,12 @@ public class Detector extends BaseRichBolt implements Constant {
     public void execute(Tuple input) {
         //doneTODO:
         //WordList pattern = (WordList) input.getValueByField(PATTERN_FIELD);
-
+        final long now = System.currentTimeMillis();
         ArrayList<WordList> wordListArrayList = (ArrayList<WordList>) input.getValueByField(PATTERN_FIELD);
 
         wordListArrayList.forEach((pattern) -> {
 
-            Entry entry = patterns.computeIfAbsent(pattern, (k) -> new Entry());
+            Entry entry = patterns.computeIfAbsent(pattern, (k) -> new Entry(now));
 
             if (!input.getSourceStreamId().equals(FEEDBACK_STREAM)) {
                 ///Pattern Count Stream, only affect pattern count
@@ -211,6 +280,8 @@ public class Detector extends BaseRichBolt implements Constant {
             }
             if (entry.unused()) {
                 patterns.remove(pattern);
+            } else {
+                entry.setTimestamp(now);
             }
         });
         collector.ack(input);

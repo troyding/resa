@@ -11,6 +11,8 @@ public interface Constant {
     public static final String IS_ADD_MFP = "isAddMFP";
 
     public static final String THRESHOLD_PROP = "fp.pattern.threshold";
+    public static final String DICT_FILE_PROP = "fp.pattern.dict-file";
+    public static final String MAX_KEEP_PROP = "fp.pattern.max.keep.ms";
 
     public static final String FEEDBACK_STREAM = "feedback";
     public static final String REPORT_STREAM = "report";

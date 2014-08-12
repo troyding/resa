@@ -10,7 +10,7 @@ public class FileClient {
     private static Socket sock;
     private static String fileName;
     private static BufferedReader stdin;
-    private static PrintStream os;
+    private static DataOutputStream os;
 
     public static void main(String[] args) throws IOException, IOException {
         try {
@@ -21,19 +21,19 @@ public class FileClient {
             System.exit(1);
         }
 
-        os = new PrintStream(sock.getOutputStream());
+        os = new DataOutputStream(sock.getOutputStream());
 
         try {
             switch (Integer.parseInt(selectAction())) {
                 case 1:
-                    os.println("write");
+                    os.writeUTF("write");
                     sendFile();
                     break;
                 case 2:
-                    os.println("read");
+                    os.writeUTF("read");
                     System.err.print("Enter file name: ");
                     fileName = stdin.readLine();
-                    os.println(fileName);
+                    os.writeUTF(fileName);
                     receiveFile(fileName);
                     break;
             }
@@ -43,7 +43,7 @@ public class FileClient {
         sock.close();
     }
 
-    public static String selectAction() throws IOException {
+    private static String selectAction() throws IOException {
         System.out.println("1. Send file.");
         System.out.println("2. Recieve file.");
         System.out.print("\nMake selection: ");
@@ -51,7 +51,7 @@ public class FileClient {
         return stdin.readLine();
     }
 
-    public static void sendFile() {
+    private static void sendFile() {
         try {
             System.err.print("Enter file name: ");
             fileName = stdin.readLine();
@@ -71,7 +71,6 @@ public class FileClient {
             //Sending file name and file size to the server
             DataOutputStream dos = new DataOutputStream(os);
             dos.writeUTF(myFile.getName());
-            dos.writeLong(mybytearray.length);
             dos.write(mybytearray, 0, mybytearray.length);
             dos.flush();
             System.out.println("File " + fileName + " sent to Server.");
@@ -80,7 +79,7 @@ public class FileClient {
         }
     }
 
-    public static void receiveFile(String fileName) {
+    private static void receiveFile(String fileName) {
         try {
             int bytesRead;
             InputStream in = sock.getInputStream();
@@ -103,5 +102,17 @@ public class FileClient {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public static InputStream openInputStream(String host, int port, String fileName) throws IOException {
+        Socket socket = new Socket(host, port);
+        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+        out.writeUTF("read");
+        out.writeUTF(fileName);
+        DataInputStream in = new DataInputStream(socket.getInputStream());
+        if (in.readLong() < 0) {
+            throw new FileNotFoundException(fileName);
+        }
+        return in;
     }
 }

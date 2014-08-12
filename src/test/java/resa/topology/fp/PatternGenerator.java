@@ -10,7 +10,6 @@ import backtype.storm.tuple.Tuple;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -30,7 +29,7 @@ public class PatternGenerator extends BaseRichBolt implements Constant {
         dict = new HashMap<>();
         int id = 0;
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(this.getClass().getResourceAsStream("/dict-100000.txt")))) {
+                new InputStreamReader(this.getClass().getResourceAsStream((String) stormConf.get(DICT_FILE_PROP))))) {
             String line = null;
             while ((line = reader.readLine()) != null) {
                 dict.put(line, id++);

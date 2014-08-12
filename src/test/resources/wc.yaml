@@ -36,7 +36,7 @@ topology.builtin.metrics.bucket.size.secs: 10
 ## number of executors for each component
 spout.parallelism: 1
 split.parallelism: 5
-counter.parallelism: 3
+counter.parallelism: 4
 
 resa.metric.redis.host: "192.168.0.30"
 resa.metric.redis.port: 6379

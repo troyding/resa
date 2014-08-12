@@ -45,7 +45,12 @@ public class MeasurableSpout extends DelegatedSpout {
         public void spoutAck(SpoutAckInfo info) {
             MeasurableMsgId streamMsgId = (MeasurableMsgId) info.messageId;
             if (streamMsgId != null && streamMsgId.isSampled()) {
-                completeMetric.addMetric(streamMsgId.stream, System.currentTimeMillis() - streamMsgId.startTime);
+                long cost = System.currentTimeMillis() - streamMsgId.startTime;
+                if (cost > qos) {
+                    missMetric.addMetric(streamMsgId.stream, cost);
+                } else {
+                    completeMetric.addMetric(streamMsgId.stream, cost);
+                }
             }
         }
     }
@@ -53,7 +58,9 @@ public class MeasurableSpout extends DelegatedSpout {
     private transient CMVMetric completeMetric;
     private Sampler sampler;
     private transient MultiCountMetric emitMetric;
+    private transient CMVMetric missMetric;
     private long lastMetricsSent;
+    private long qos;
 
     public MeasurableSpout(IRichSpout delegate) {
         super(delegate);
@@ -70,7 +77,9 @@ public class MeasurableSpout extends DelegatedSpout {
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         int interval = Utils.getInt(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
         completeMetric = context.registerMetric(MetricNames.COMPLETE_LATENCY, new CMVMetric(), interval);
+        missMetric = context.registerMetric(MetricNames.MISS_QOS, new CMVMetric(), interval);
         emitMetric = context.registerMetric(MetricNames.EMIT_COUNT, new MultiCountMetric(), interval);
+        qos = ConfigUtil.getLong(conf, "resa.metric.complete-latency.threshold.ms", Long.MAX_VALUE);
         lastMetricsSent = System.currentTimeMillis();
         context.registerMetric(MetricNames.DURATION, this::getMetricsDuration, interval);
         sampler = new Sampler(ConfigUtil.getDouble(conf, ResaConfig.COMP_SAMPLE_RATE, 0.05));

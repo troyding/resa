@@ -6,11 +6,13 @@ topology.queue.trace: true
 topology.queue.sample.rate: 0.05
 resa.comp.sample.rate: 0.05
 
+resa.metric.complete-latency.threshold.ms: 1000
 resa.metric.redis.host: localhost
 resa.metric.redis.port: 6379
 #resa.metric.redis.queue-name: metrics
 resa.metric.approved.names:
   - "complete-latency"
+  - "miss-qos"
   - "execute"
   - "__sendqueue send-queue"
   - "__receive recv-queue"

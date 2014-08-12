@@ -42,6 +42,14 @@ public class ConfigUtil {
         return defaultValue;
     }
 
+    public static long getLong(Map<String, Object> conf, String key, long defaultValue) {
+        Object value = conf.get(key);
+        if (value != null && value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return defaultValue;
+    }
+
     public static int getIntThrow(Map<String, Object> conf, String key) {
         return getNumberThrow(conf, key).intValue();
     }

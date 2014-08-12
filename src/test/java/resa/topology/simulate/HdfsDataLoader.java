@@ -1,6 +1,5 @@
 package resa.topology.simulate;
 
-import backtype.storm.Config;
 import backtype.storm.serialization.SerializationFactory;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
@@ -10,13 +9,12 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoSerializable;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import resa.topology.WordCountTopology;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +22,9 @@ import java.util.UUID;
 /**
  * Created by ding on 14-7-29.
  */
-public class DataLoader extends WordCountTopology.WordCount {
+public class HdfsDataLoader extends WordCountTopology.WordCount {
+
+    private Configuration hdfsConf;
 
     private static class WordCountDB implements KryoSerializable {
         private long size;
@@ -53,9 +53,6 @@ public class DataLoader extends WordCountTopology.WordCount {
         public void read(Kryo kryo, Input input) {
             size = input.readLong();
             while (input.readBoolean()) {
-//                for (int i = 0; i < 1; i++) {
-//                    Math.atan(Math.sqrt(Math.random() * Integer.MAX_VALUE));
-//                }
                 input.readString();
                 input.readInt();
             }
@@ -64,6 +61,7 @@ public class DataLoader extends WordCountTopology.WordCount {
 
     @Override
     public void prepare(Map stormConf, TopologyContext context) {
+        this.hdfsConf = new Configuration();
         if (context.getTaskData("pattern") == null) {
             try {
                 generateData(stormConf, context);
@@ -72,10 +70,10 @@ public class DataLoader extends WordCountTopology.WordCount {
             }
         } else {
             Path file = getPath(stormConf, context);
-            if (!Files.exists(file)) {
+            if (!dataFileExist(file)) {
                 context.getSharedExecutor().submit(() -> {
                     Kryo kryo = SerializationFactory.getKryo(stormConf);
-                    try (Output out = new Output(Files.newOutputStream(getPath(stormConf, context)))) {
+                    try (Output out = new Output(FileSystem.get(hdfsConf).create(getPath(stormConf, context)))) {
                         out.writeInt(1);
                         out.writeString("pattern");
                         WordCountDB db = (WordCountDB) context.getTaskData("pattern");
@@ -89,12 +87,21 @@ public class DataLoader extends WordCountTopology.WordCount {
         }
     }
 
+    private boolean dataFileExist(Path file) {
+        try {
+            return FileSystem.get(hdfsConf).exists(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public void generateData(Map stormConf, TopologyContext context) throws IOException {
         List<Double> dataSizes = (List<Double>) stormConf.get("dataSizes");
         long dataSize = (long) (dataSizes.get(context.getThisTaskIndex()) * 600);
         Kryo kryo = SerializationFactory.getKryo(stormConf);
         WordCountDB db = new WordCountDB(dataSize);
-        try (Output out = new Output(Files.newOutputStream(getPath(stormConf, context)))) {
+        try (Output out = new Output(FileSystem.get(hdfsConf).create(getPath(stormConf, context)))) {
             out.writeInt(1);
             out.writeString("pattern");
             kryo.writeClass(out, db.getClass());
@@ -105,19 +112,17 @@ public class DataLoader extends WordCountTopology.WordCount {
     }
 
     private Path getPath(Map<String, Object> conf, TopologyContext context) {
-        Path loaclDataPath = Paths.get((String) conf.get(Config.STORM_LOCAL_DIR), "data", context.getStormId());
-        if (!Files.exists(loaclDataPath)) {
-            try {
-                Files.createDirectories(loaclDataPath);
-            } catch (FileAlreadyExistsException e) {
-            } catch (IOException e) {
-                loaclDataPath = null;
+        Path dataPath = new Path(String.format("/resa/%s/task-%03d.data", context.getStormId(),
+                context.getThisTaskId()));
+        try {
+            FileSystem fs = FileSystem.get(hdfsConf);
+            if (!fs.exists(dataPath.getParent())) {
+                fs.mkdirs(dataPath.getParent());
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        if (loaclDataPath != null) {
-            loaclDataPath = loaclDataPath.resolve(String.format("task-%03d.data", context.getThisTaskId()));
-        }
-        return loaclDataPath;
+        return dataPath;
     }
 
     @Override

@@ -7,17 +7,17 @@ import backtype.storm.generated.StormTopology;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
 import resa.metrics.RedisMetricsCollector;
+import resa.topology.ResaTopologyBuilder;
 import resa.topology.TopologyWithSleepBolt.TASentenceSpout;
 import resa.topology.WordCountTopology;
-import resa.topology.WritableTopologyBuilder;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static resa.util.ConfigUtil.readConfig;
@@ -25,10 +25,10 @@ import static resa.util.ConfigUtil.readConfig;
 /**
  * Created by ding on 14-7-29.
  */
-public class LoadDataTopology {
+public class LoadSimulateTopology {
 
     private static StormTopology createTopology(Map<String, Object> conf) {
-        TopologyBuilder builder = new WritableTopologyBuilder();
+        TopologyBuilder builder = new ResaTopologyBuilder();
 
         String host = (String) conf.get("redis.host");
         int port = ConfigUtil.getInt(conf, "redis.port", 6379);
@@ -41,8 +41,17 @@ public class LoadDataTopology {
                 .setNumTasks(ConfigUtil.getInt(conf, "simulate.bolt.split.tasks", parallelism));
 
         parallelism = ConfigUtil.getInt(conf, "simulate.bolt.data-loader.parallelism", 1);
-        builder.setBolt("data-loader", new HdfsDataLoader(), parallelism).fieldsGrouping("split", new Fields("word"))
-                .setNumTasks(ConfigUtil.getInt(conf, "simulate.bolt.data-loader.tasks", parallelism));
+        int numTasks = ConfigUtil.getInt(conf, "simulate.bolt.data-loader.tasks", parallelism);
+        int toMoveChunks = (int) (ConfigUtil.getDouble(conf, "simulate.bolt.data-loader.ratio", 1.0) * numTasks);
+        Set<Integer> tasks = new HashSet<>();
+        Random rand = new Random();
+        while (tasks.size() < toMoveChunks) {
+            tasks.add(rand.nextInt(numTasks));
+        }
+        System.out.println("To move tasks: " + tasks);
+        conf.put("data-tasks", tasks.stream().map(String::valueOf).collect(Collectors.joining(",")));
+        builder.setBolt("data-loader", new SimulatedLoader(), parallelism).fieldsGrouping("split", new Fields("word"))
+                .setNumTasks(numTasks);
         //conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, totalComputeTime * 3);
         return builder.createTopology();
     }
@@ -63,9 +72,6 @@ public class LoadDataTopology {
         } else {
 //            resaConfig.addOptimizeSupport();
             resaConfig.registerMetricsConsumer(RedisMetricsCollector.class);
-            List<Double> dataSizes = Files.readAllLines(Paths.get(args[2])).stream().map(String::trim)
-                    .filter(s -> !s.isEmpty()).map(Double::valueOf).collect(Collectors.toList());
-            resaConfig.put("dataSizes", dataSizes);
             StormSubmitter.submitTopology(args[0], resaConfig, topology);
         }
     }

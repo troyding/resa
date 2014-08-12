@@ -9,6 +9,8 @@ public class MetricNames {
 
     public static final String COMPLETE_LATENCY = "complete-latency";
 
+    public static final String MISS_QOS = "miss-qos";
+
     public static final String TASK_EXECUTE = "execute";
 
     public static final String DURATION = "duration";
@@ -18,5 +20,7 @@ public class MetricNames {
     public static final String RECV_QUEUE = "recv-queue";
 
     public static final String EMIT_COUNT = "emit";
+
+    public static final String SERIALIZED_SIZE = "serialized";
 
 }

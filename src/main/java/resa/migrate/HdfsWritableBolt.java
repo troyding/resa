@@ -12,6 +12,9 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers;
 import com.netflix.curator.framework.CuratorFramework;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -25,6 +28,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.file.*;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,16 +39,16 @@ import java.util.stream.Stream;
 /**
  * Created by ding on 14-6-7.
  */
-public class WritableBolt extends DelegatedBolt {
+public class HdfsWritableBolt extends DelegatedBolt {
 
-    private static final Logger LOG = LoggerFactory.getLogger(WritableBolt.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HdfsWritableBolt.class);
     private static final Map<Integer, Object> DATA_HOLDER = new ConcurrentHashMap<>();
     // this should be part of user resource, but no initialization hook in work.clj yet
     private static CuratorFramework zk = null;
 
     private static CuratorFramework zkInstance(Map<String, Object> conf) {
         if (zk == null) {
-            synchronized (WritableBolt.class) {
+            synchronized (HdfsWritableBolt.class) {
                 if (zk == null) {
                     zk = Utils.newCuratorStarted(conf, (List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS),
                             conf.get(Config.STORM_ZOOKEEPER_PORT));
@@ -61,14 +66,16 @@ public class WritableBolt extends DelegatedBolt {
     private transient ExecutorService threadPool;
     private int myTaskId;
     private String taskZkNode;
+    private Configuration hdfsConf;
 
-    public WritableBolt(IRichBolt delegate) {
+    public HdfsWritableBolt(IRichBolt delegate) {
         super(delegate);
     }
 
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector outputCollector) {
         this.conf = conf;
+        this.hdfsConf = new Configuration();
         this.myTaskId = context.getThisTaskId();
         this.taskZkNode = String.format("%s/%s/task-%03d", conf.getOrDefault("resa.migrate.zkroot", "/resa"),
                 context.getStormId(), context.getThisTaskId());
@@ -146,41 +153,19 @@ public class WritableBolt extends DelegatedBolt {
             LOG.info("Task-{} load data from memory", taskId);
             return;
         }
-        String host = getDataLocation();
-        if (host != null) {
-            boolean success = false;
-            try (InputStream in = FileClient.openInputStream(host, ConfigUtil.getInt(conf, "file-server.port", 19888),
-                    String.format("%s/task-%03d.data", topoId, taskId))) {
-                Files.copy(in, loaclDataPath, StandardCopyOption.REPLACE_EXISTING);
-                success = true;
-            } catch (IOException e) {
-                LOG.warn("Load file from remote host failed", e);
+        try {
+            FileSystem fs = FileSystem.get(hdfsConf);
+            org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(String.format("/resa/%s/task-%03d.data",
+                    topoId, taskId));
+            if (fs.exists(file)) {
+                FSDataInputStream in = fs.open(file);
+                loadData(in);
+                in.close();
             }
-            if (success) {
-                try (InputStream in = Files.newInputStream(loaclDataPath)) {
-                    long size = loadData(in);
-                    LOG.info("Task-{} load data for topology {} from host {}, data size is {}", taskId, topoId, host,
-                            size);
-                    return;
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        } else {
-            LOG.info("No remote host holds data for topology[{}] task-{}", topoId, taskId);
+        } catch (IOException e) {
+            LOG.warn("read from hdfs failed for task-" + taskId, e);
         }
-        // load checkpoint from redis, create a new Interface later to avoid hard code
-        String queueName = topoId;
-        queueName = String.format("%s-%03d-data", queueName, taskId);
-        InputStream dataSource = RedisInputStream.create((String) conf.get("redis.host"),
-                ConfigUtil.getInt(conf, "redis.port", 6379), queueName);
-        if (dataSource != null) {
-            try {
-                loadData(dataSource);
-            } catch (Exception e) {
-                LOG.warn("load data from " + dataSource + " failed, localDataPath=" + loaclDataPath);
-            }
-        }
+
     }
 
     private static Map<String, Object> getDataRef(TopologyContext context) {
