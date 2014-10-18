@@ -13,7 +13,6 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvResize;
 public class Video2Image {
 
     public static void main(String[] args) {
-        opencv_core.Mat mat = new opencv_core.Mat();
         opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(args[0]);
         int i = 0;
         opencv_core.IplImage img = null;
@@ -21,6 +20,7 @@ public class Video2Image {
         if (max <= 0) {
             max = Integer.MAX_VALUE;
         }
+        opencv_core.Mat mat = new opencv_core.Mat();
         while (i++ < max && capture.read(mat)) {
             opencv_core.IplImage source = mat.asIplImage();
             if (img == null) {
@@ -31,6 +31,6 @@ public class Video2Image {
             cvSaveImage(String.format(args[1] + "/%05d.jpg", i), img);
         }
         capture.release();
-        System.out.println("done");
+        System.out.println("done, got " + i + " images");
     }
 }
