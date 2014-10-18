@@ -59,6 +59,7 @@ public class ImageSender {
                 System.out.println(count + "@" + now + ", qLen=" + dataQueue.size());
                 for (int j = 0; j < fps; j++) {
                     if (!capture.read(mat)) {
+                        System.out.println("Cannot read image from video");
                         return;
                     }
                     if (retainFrames.contains(j)) {
