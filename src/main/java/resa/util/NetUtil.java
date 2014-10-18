@@ -8,31 +8,19 @@ import java.util.Enumeration;
  * Created by ding on 14-8-5.
  */
 public class NetUtil {
-    /**
-     * 判断当前操作是否Windows.
-     *
-     * @return true---是Windows操作系统
-     */
+
     private static boolean isWindowsOS() {
         String osName = System.getProperty("os.name");
         return osName.toLowerCase().indexOf("windows") > -1;
     }
 
-    /**
-     * 获取本机IP地址，并自动区分Windows还是Linux操作系统
-     *
-     * @return String
-     */
     public static String getLocalIP() {
         String sIP = "";
         InetAddress ip = null;
         try {
-            // 如果是Windows操作系统
             if (isWindowsOS()) {
                 ip = InetAddress.getLocalHost();
-            }
-            // 如果是Linux操作系统
-            else {
+            } else {
                 boolean bFindIP = false;
                 Enumeration<NetworkInterface> netInterfaces = (Enumeration<NetworkInterface>) NetworkInterface
                         .getNetworkInterfaces();
@@ -42,12 +30,10 @@ public class NetUtil {
                     }
                     NetworkInterface ni = (NetworkInterface) netInterfaces
                             .nextElement();
-                    // ----------特定情况，可以考虑用ni.getName判断
-                    // 遍历所有ip
                     Enumeration<InetAddress> ips = ni.getInetAddresses();
                     while (ips.hasMoreElements()) {
                         ip = ips.nextElement();
-                        if (ip.isSiteLocalAddress() && !ip.isLoopbackAddress() // 127.开头的都是lookback地址
+                        if (ip.isSiteLocalAddress() && !ip.isLoopbackAddress()
                                 && ip.getHostAddress().indexOf(":") == -1) {
                             bFindIP = true;
                             break;
