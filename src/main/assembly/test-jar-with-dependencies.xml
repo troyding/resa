@@ -34,7 +34,7 @@
                 <exclude>com.esotericsoftware.*:*</exclude>
                 <exclude>clj-*:*</exclude>
                 <exclude>org.jgrapht:*</exclude>
-                <exclude>org.bytedeco:*</exclude>
+                <!--<exclude>org.bytedeco:*</exclude>-->
             </excludes>
         </dependencySet>
     </dependencySets>
