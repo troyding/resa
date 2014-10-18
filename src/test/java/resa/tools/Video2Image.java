@@ -13,8 +13,8 @@ import static org.bytedeco.javacpp.opencv_imgproc.cvResize;
 public class Video2Image {
 
     public static void main(String[] args) {
-        opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(args[0]);
         opencv_core.Mat mat = new opencv_core.Mat();
+        opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(args[0]);
         int i = 0;
         opencv_core.IplImage img = null;
         int max = Integer.parseInt(args[2]);
