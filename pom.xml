@@ -56,22 +56,22 @@
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>javacv</artifactId>
-            <version>0.9</version>
-            <!--<exclusions>-->
-                <!--<exclusion>-->
-                    <!--<artifactId>javacpp</artifactId>-->
-                    <!--<groupId>org.bytedeco</groupId>-->
-                <!--</exclusion>-->
-            <!--</exclusions>-->
+            <version>0.8</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>javacpp</artifactId>
+                    <groupId>org.bytedeco</groupId>
+                </exclusion>
+            </exclusions>
             <scope>test</scope>
         </dependency>
 
-        <!--<dependency>-->
-            <!--<groupId>org.bytedeco</groupId>-->
-            <!--<artifactId>javacpp</artifactId>-->
-            <!--<version>0.9</version>-->
-            <!--<scope>test</scope>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>0.8-2-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <repositories>
