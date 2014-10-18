@@ -43,6 +43,9 @@ public class ImageSender {
         Random rand = new Random();
         int range = Math.min(fps - retain, retain);
         opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(videoFile);
+        if (capture.isOpened()) {
+            throw new RuntimeException("VideoCapture is not opened");
+        }
         try {
             opencv_core.Mat mat = new opencv_core.Mat();
 //            opencv_core.IplImage img = null;
