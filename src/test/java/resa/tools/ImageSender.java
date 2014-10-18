@@ -1,7 +1,8 @@
 package resa.tools;
 
 import org.bytedeco.javacpp.opencv_core;
-import org.bytedeco.javacpp.opencv_highgui;
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FrameGrabber;
 import redis.clients.jedis.Jedis;
 import resa.util.ConfigUtil;
 
@@ -42,12 +43,9 @@ public class ImageSender {
         }
         Random rand = new Random();
         int range = Math.min(fps - retain, retain);
-        opencv_highgui.VideoCapture capture = new opencv_highgui.VideoCapture(videoFile);
-        if (!capture.isOpened()) {
-            throw new RuntimeException("VideoCapture is not opened for file " + videoFile);
-        }
+        FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(videoFile);
         try {
-            opencv_core.Mat mat = new opencv_core.Mat();
+            grabber.start();
 //            opencv_core.IplImage img = null;
             long now;
             Set<Integer> retainFrames = new HashSet<>();
@@ -61,12 +59,8 @@ public class ImageSender {
                 now = System.currentTimeMillis();
                 System.out.println(count + "@" + now + ", qLen=" + dataQueue.size());
                 for (int j = 0; j < fps; j++) {
-                    if (!capture.read(mat)) {
-                        System.out.println("Cannot read image from video");
-                        return;
-                    }
+                    opencv_core.IplImage source = grabber.grab();
                     if (retainFrames.contains(j)) {
-                        opencv_core.IplImage source = mat.asIplImage();
 //                        if (img == null) {
 //                            opencv_core.CvSize size = cvSize((int) (source.width() / 1.5),
 //                                    (int) (source.height() / 1.5));
@@ -86,7 +80,11 @@ public class ImageSender {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            capture.release();
+            try {
+                grabber.release();
+            } catch (FrameGrabber.Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
