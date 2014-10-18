@@ -11,6 +11,8 @@ public class MetricNames {
 
     public static final String MISS_QOS = "miss-qos";
 
+    public static final String LATENCY_STAT = "latency-stat";
+
     public static final String TASK_EXECUTE = "execute";
 
     public static final String DURATION = "duration";

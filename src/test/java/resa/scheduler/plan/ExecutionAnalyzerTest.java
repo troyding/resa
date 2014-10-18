@@ -37,7 +37,7 @@ public class ExecutionAnalyzerTest {
     public void testCalcStat() throws Exception {
         String compName = "detector";
         SortedMap<String, ExecutionAnalyzer.ExecutionStat> ret;
-        try (RedisQueueIterable data = new RedisQueueIterable("192.168.0.30", 6379, "fpt-1-1407393776-metrics", 9800)) {
+        try (RedisQueueIterable data = new RedisQueueIterable("192.168.0.30", 6379, "fpt-16-1409727090-metrics", 980000)) {
             ExecutionAnalyzer analyzer = new ExecutionAnalyzer(data);
             analyzer.calcStat();
             ret = analyzer.getStat().subMap(compName, compName + "~");
@@ -45,6 +45,7 @@ public class ExecutionAnalyzerTest {
         dataSizes = ret.values().stream().mapToDouble(s -> s.getDataSize()).toArray();
         workload = ret.values().stream().mapToDouble(s -> s.getCost()).toArray();
         DoubleStream.of(dataSizes).map(size -> size / (1024 * 1024)).forEach(System.out::println);
+        System.out.println("Avg data size " + (DoubleStream.of(dataSizes).sum() / 1024 / 1024 / dataSizes.length) + "MB");
         DoubleStream.of(workload).forEach(System.out::println);
     }
 

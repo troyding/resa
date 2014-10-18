@@ -73,7 +73,8 @@ public class HdfsDataLoader extends WordCountTopology.WordCount {
             if (!dataFileExist(file)) {
                 context.getSharedExecutor().submit(() -> {
                     Kryo kryo = SerializationFactory.getKryo(stormConf);
-                    try (Output out = new Output(FileSystem.get(hdfsConf).create(getPath(stormConf, context)))) {
+                    try (Output out = new Output(FileSystem.get(hdfsConf).create(getPath(stormConf, context), true,
+                            12 * 1024, (short) 2, 32 * 1024 * 1024L))) {
                         out.writeInt(1);
                         out.writeString("pattern");
                         WordCountDB db = (WordCountDB) context.getTaskData("pattern");
@@ -101,7 +102,8 @@ public class HdfsDataLoader extends WordCountTopology.WordCount {
         long dataSize = (long) (dataSizes.get(context.getThisTaskIndex()) * 600);
         Kryo kryo = SerializationFactory.getKryo(stormConf);
         WordCountDB db = new WordCountDB(dataSize);
-        try (Output out = new Output(FileSystem.get(hdfsConf).create(getPath(stormConf, context)))) {
+        try (Output out = new Output(FileSystem.get(hdfsConf).create(getPath(stormConf, context), true,
+                12 * 1024, (short) 2, 32 * 1024 * 1024L))) {
             out.writeInt(1);
             out.writeString("pattern");
             kryo.writeClass(out, db.getClass());

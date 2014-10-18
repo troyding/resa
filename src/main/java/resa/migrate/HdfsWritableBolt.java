@@ -81,7 +81,7 @@ public class HdfsWritableBolt extends DelegatedBolt {
                 context.getStormId(), context.getThisTaskId());
         ensureZkNode();
         kryo = SerializationFactory.getKryo(conf);
-        LOG.info("Bolt " + getDelegate().getClass() + " need persist");
+        //LOG.info("Bolt " + getDelegate().getClass() + " need persist");
         dataRef = getDataRef(context);
         loaclDataPath = Paths.get((String) conf.get(Config.STORM_LOCAL_DIR), "data", context.getStormId());
         if (!Files.exists(loaclDataPath)) {
@@ -101,7 +101,7 @@ public class HdfsWritableBolt extends DelegatedBolt {
         long cost = System.currentTimeMillis() - t1;
         LOG.info("Task-{} Load data cost {}ms", context.getThisTaskId(), cost);
         this.threadPool = context.getSharedExecutor();
-        threadPool.submit(() -> writeTimeToRedis(context, cost));
+//        threadPool.submit(() -> writeTimeToRedis(context, cost));
         int checkpointInt = ConfigUtil.getInt(conf, "resa.comp.checkpoint.interval.sec", 180);
         if (checkpointInt > 0) {
             context.registerMetric(MetricNames.SERIALIZED_SIZE, () -> createCheckpointAndGetSize(context),
@@ -155,8 +155,7 @@ public class HdfsWritableBolt extends DelegatedBolt {
         }
         try {
             FileSystem fs = FileSystem.get(hdfsConf);
-            org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(String.format("/resa/%s/task-%03d.data",
-                    topoId, taskId));
+            org.apache.hadoop.fs.Path file = getFilePath(conf, topoId, taskId);
             if (fs.exists(file)) {
                 FSDataInputStream in = fs.open(file);
                 loadData(in);
@@ -165,7 +164,11 @@ public class HdfsWritableBolt extends DelegatedBolt {
         } catch (IOException e) {
             LOG.warn("read from hdfs failed for task-" + taskId, e);
         }
+    }
 
+    private org.apache.hadoop.fs.Path getFilePath(Map<String, Object> conf, String topoId, int taskId) {
+        String topoName = topoId.split("-")[0];
+        return new org.apache.hadoop.fs.Path(String.format("/resa/%s/task-%03d.data", topoName, taskId));
     }
 
     private static Map<String, Object> getDataRef(TopologyContext context) {
@@ -186,9 +189,15 @@ public class HdfsWritableBolt extends DelegatedBolt {
                 size = writeData(Files.newOutputStream(tmpFile));
                 Files.move(tmpFile, loaclDataPath, StandardCopyOption.REPLACE_EXISTING);
                 reportMyData();
-//                String queueName = String.format("%s-%03d-data", context.getStormId(), context.getThisTaskId());
-//                threadPool.submit(() -> Files.copy(loaclDataPath, new RedisOutputStream((String) conf.get("redis.host"),
-//                        ConfigUtil.getInt(conf, "redis.port", 6379), queueName)));
+                threadPool.submit(() -> {
+                    org.apache.hadoop.fs.Path file = getFilePath(conf, context.getStormId(), context.getThisTaskId());
+                    try (OutputStream out = FileSystem.get(hdfsConf).create(file, true, 12 * 1024, (short) 2,
+                            32 * 1024 * 1024L)) {
+                        Files.copy(loaclDataPath, out);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
             } catch (Exception e) {
                 LOG.warn("Save bolt failed", e);
             }

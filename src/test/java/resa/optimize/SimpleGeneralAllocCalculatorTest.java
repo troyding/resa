@@ -209,7 +209,7 @@ public class SimpleGeneralAllocCalculatorTest {
         conf.put("resa.opt.win.history.size.ignore", -1);
         conf.put("resa.comp.sample.rate", 1.0);
 
-        int allewedExecutorNum = 26;
+        int allewedExecutorNum = 24;
         conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, allewedExecutorNum);
 
         String host = "192.168.0.30";
@@ -263,6 +263,56 @@ public class SimpleGeneralAllocCalculatorTest {
                 System.out.println("Allocation updated to " + currAllocation);
             }
         }
+    }
+
+    @Test
+    public void runAllocCalculatorAlg() throws Exception {
+
+        conf.put(Config.NIMBUS_HOST, "192.168.0.30");
+        conf.put(Config.NIMBUS_THRIFT_PORT, 6627);
+
+        conf.put("resa.opt.smd.qos.ms", 1500.0);
+        conf.put("resa.opt.win.history.size", 1);
+        conf.put("resa.opt.win.history.size.ignore", 0);
+        conf.put("resa.comp.sample.rate", 1.0);
+
+        int allewedExecutorNum = 24;
+        conf.put(ResaConfig.ALLOWED_EXECUTOR_NUM, allewedExecutorNum);
+
+        String host = "192.168.0.30";
+        int port = 6379;
+        String queue = "fpt-16-1413270599-metrics";
+        int maxLen = 5000;
+
+        NimbusClient nimbusClient = NimbusClient.getConfiguredClient(conf);
+        Nimbus.Client nimbus = nimbusClient.getClient();
+        //String topoName = "ta1wc2P2Redis";
+        ///String topoName = "ta1wcLoopRedis";
+        ///String topoName = "arwcRedis";
+        ///String topoName = "outdetResa";
+        ///String topoName = "rwc";
+        String topoName = "fpt";
+        String topoId = TopologyHelper.getTopologyId(nimbus, topoName);
+
+        TopologyInfo topoInfo = nimbus.getTopologyInfo(topoId);
+
+        Map<String, Integer> currAllocation = topoInfo.get_executors().stream().filter(e -> !Utils.isSystemId(e.get_component_id()))
+                .collect(Collectors.groupingBy(e -> e.get_component_id(),
+                        Collectors.reducing(0, e -> 1, (i1, i2) -> i1 + i2)));
+
+        SimpleGeneralAllocCalculator smdm = new SimpleGeneralAllocCalculator();
+        smdm.init(conf, currAllocation, nimbus.getUserTopology(topoId));
+
+        Map<String, List<ExecutorDetails>> comp2Executors = TopologyHelper.getTopologyExecutors(topoName, conf)
+                .entrySet().stream().filter(e -> !Utils.isSystemId(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        AggResultCalculator resultCalculator = new AggResultCalculator(
+                RedisDataSource.iterData(host, port, queue, maxLen), comp2Executors, nimbus.getUserTopology(topoId));
+        resultCalculator.calCMVStat();
+
+        System.out.println("-------------Report on: " + System.currentTimeMillis() + "------------------------------");
+        System.out.println(currAllocation + "-->" + smdm.calc(resultCalculator.getResults(), allewedExecutorNum).currOptAllocation);
     }
 
 }

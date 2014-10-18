@@ -27,6 +27,10 @@ public class OnceAdjustMaker implements DecisionMaker {
         if (!adjust && now() - startTime > minAdjustInterval) {
             adjust = true;
             Map<String, Integer> ret = new HashMap<>();
+//            ret.put("input", 2);
+//            ret.put("generator", 6);
+//            ret.put("detector", 13);
+//            ret.put("reporter", 3);
             ret.put("image-input", 2);
             ret.put("feat-ext", 10);
             ret.put("matcher", 11);

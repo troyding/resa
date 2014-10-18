@@ -3,7 +3,9 @@ package resa.scheduler.plan;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -11,7 +13,7 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static resa.scheduler.plan.PackCalculator.*;
+import static resa.scheduler.plan.PackCalculator.Range;
 import static resa.scheduler.plan.PackCalculator.convertPack;
 
 /**
@@ -23,20 +25,28 @@ public class MigrateCostEstimate {
     private double[] workload;
     private double totalDataSize;
     private TreeMap<String, Double> migrationMetrics;
-    private float ratio = 1.8f;
+    private float ratio = 1.20f;
+    private int[] statesChain = null;
 
     @Before
     public void init() throws Exception {
-        workload = Files.readAllLines(Paths.get("/Volumes/Data/work/doctor/resa/exp/workload-064.txt")).stream()
+        workload = Files.readAllLines(Paths.get("/Volumes/Data/work/doctor/resa/exp/fp-workload-064-100.txt")).stream()
                 .map(String::trim).filter(s -> !s.isEmpty()).mapToDouble(Double::valueOf).toArray();
-        dataSizes = Files.readAllLines(Paths.get("/Volumes/Data/work/doctor/resa/exp/data-sizes-064.txt")).stream()
+        dataSizes = Files.readAllLines(Paths.get("/Volumes/Data/work/doctor/resa/exp/fp-data-sizes-064-100.txt")).stream()
                 .map(String::trim).filter(s -> !s.isEmpty()).mapToDouble(Double::valueOf).toArray();
         totalDataSize = DoubleStream.of(dataSizes).sum();
-        migrationMetrics = Files.readAllLines(Paths.get("/Volumes/Data/work/doctor/resa/exp/metrics.txt")).stream()
+        migrationMetrics = Files.readAllLines(Paths.get("/Volumes/Data/work/doctor/resa/exp/fp-metrics.txt")).stream()
                 .map(s -> s.split(":")).collect(Collectors.toMap(strs -> strs[0] + "-" + strs[1],
                         strs -> Double.parseDouble(strs[2]), (v1, v2) -> {
                             throw new IllegalStateException();
                         }, TreeMap::new));
+        Path chainFile = Paths.get("/tmp/chain.txt");
+        if (Files.exists(chainFile)) {
+            statesChain = Files.lines(chainFile).map(String::trim).filter(s -> !s.isEmpty())
+                    .mapToInt(Integer::parseInt).toArray();
+//            statesChain = Stream.of(Files.readAllLines(chainFile).get(0).split(",")).map(String::trim)
+//                    .filter(s -> !s.isEmpty()).mapToInt(Integer::parseInt).toArray();
+        }
     }
 
     private int getNextState(int curr) {
@@ -81,24 +91,33 @@ public class MigrateCostEstimate {
         return states;
     }
 
-
     @Test
     public void compare() {
+        int[] states;
         int count = 100;
-        int[] states = new int[count];
-        states[0] = 8;
-        for (int i = 1; i < states.length; i++) {
-            states[i] = getNextState(states[i - 1]);
+        if (statesChain == null) {
+            states = new int[count];
+            states[0] = 8;
+            for (int i = 1; i < states.length; i++) {
+                states[i] = getNextState(states[i - 1]);
+            }
+        } else {
+            states = statesChain;
+            count = states.length;
         }
-        System.out.println(Arrays.toString(states));
-        for (int i = 1; i < states.length; i++) {
-            System.out.print(getTargetState(states[i - 1]).get(states[i]));
-            System.out.print(",");
-        }
-        System.out.println();
+        System.out.println(IntStream.of(states).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+//        for (int i = 1; i < states.length; i++) {
+//            System.out.print(getTargetState(states[i - 1]).get(states[i]));
+//            System.out.print(",");
+//        }
+//        System.out.println();
+        System.out.println("First pack:" + Arrays.toString(PackingAlg.calc(workload, states[0])));
         KuhnMunkres km = new KuhnMunkres(dataSizes.length);
-        System.out.println("local opt: " + output(calcLocalOptimization(states, km), count));
-        System.out.println("global opt1: " + output(calcGlobalOptimization(states, km), count));
+        System.out.println("default: " + output(calcDefault(states, km), count - 1));
+        System.out.println("local opt: " + output(calcLocalOptimization(states, km), count - 1));
+//        System.out.println("global opt1: " + output(calcGlobalOptimization(states, km), count));
+//        System.out.println("global opt2: " + output(calcGlobalOptimization2(states, 0.8f), count - 1));
+        System.out.println("global opt3: " + output(calcGlobalOptimization3(states, 0.9f), count - 1));
     }
 
     private String output(double toMove, int count) {
@@ -109,7 +128,7 @@ public class MigrateCostEstimate {
 
 
     private double calcGlobalOptimization(int[] states, KuhnMunkres km) {
-        Map<Integer, int[]> state2Pack = IntStream.of(null).boxed()
+        Map<Integer, int[]> state2Pack = IntStream.of(states).distinct().boxed()
                 .collect(Collectors.toMap(i -> i, i -> packAvg(workload.length, i)));
         double toMove = 0.0;
         for (int i = 1; i < states.length; i++) {
@@ -118,12 +137,14 @@ public class MigrateCostEstimate {
             double remain = packGain(currPack, convertPack(state2Pack.get(states[i])), km);
 //            System.out.printf("%.2f\n", (totalDataSize - remain) / 1024);
             toMove += (totalDataSize - remain);
+//            System.out.println(IntStream.of(state2Pack.get(states[i])).mapToObj(String::valueOf)
+//                    .collect(Collectors.joining(",")));
         }
         return toMove;
     }
 
     private void calcBest1(int currState, int nextStat, Map<Integer, int[]> state2Pack) {
-        int[] states = null;
+        int[] states = state2Pack.keySet().stream().mapToInt(i -> i).toArray();
         Map<Integer, Double> gain = new TreeMap<>();
         PackCalculator calculator = new DPBasedCalculator().setWorkloads(workload).setDataSizes(dataSizes)
                 .setUpperLimitRatio(ratio);
@@ -154,17 +175,131 @@ public class MigrateCostEstimate {
 //        System.out.println("-----------");
     }
 
+    private double calcGlobalOptimization3(int[] states, float gam) {
+        Path valuesDir = Paths.get("/Volumes/Data/work/doctor/resa/migration/mdp/matrix/fp/"
+                + String.format("%.2f-100", ratio));
+        Map<Integer, float[]> state2Values = IntStream.of(states).distinct().boxed().collect(Collectors.toMap(i -> i,
+                i -> readValues(valuesDir.resolve("values_" + i))));
+        Map<Integer, int[][]> statePacks = IntStream.of(states).distinct().boxed().collect(Collectors.toMap(i -> i,
+                i -> readPacks(valuesDir.resolve("state_" + i))));
+        int[] srcPack = PackingAlg.calc(workload, states[0]);
+        double toMove = 0.0;
+        for (int i = 1; i < states.length; i++) {
+            Range[] currPack = convertPack(srcPack);
+            int[] selected = selectTargetPack(currPack, statePacks.get(states[i]), state2Values.get(states[i]), gam);
+            double remain = packGain(currPack, convertPack(selected), new KuhnMunkres(workload.length));
+//            System.out.printf("%.2f\n", (totalDataSize - remain) / 1024);
+            toMove += (totalDataSize - remain);
+            System.out.println(IntStream.of(selected).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+            srcPack = selected;
+        }
+        return toMove;
+    }
+
+    private double calcGlobalOptimization2(int[] states, float gam) {
+        Path valuesDir = Paths.get("/Volumes/Data/work/doctor/resa/migration/mdp/matrix/"
+                + String.format("%.2f-0.8", ratio));
+        Map<Integer, float[]> state2Values = IntStream.of(states).distinct().boxed().collect(Collectors.toMap(i -> i,
+                i -> readValues(valuesDir.resolve("values_" + i))));
+        Map<Integer, int[][]> statePacks = IntStream.of(states).distinct().boxed().collect(Collectors.toMap(i -> i,
+                i -> readPacks(valuesDir.resolve("state_" + i))));
+        state2Values.forEach((state, values) -> {
+            if (values.length != statePacks.get(state).length) {
+                throw new IllegalStateException("values.length != statePacks.get(state).length");
+            }
+        });
+
+        int[] srcPack = PackingAlg.calc(workload, states[0]);
+        double toMove = 0.0;
+        for (int i = 1; i < states.length; i++) {
+            Range[] currPack = convertPack(srcPack);
+            int[] selected = selectTargetPack(currPack, statePacks.get(states[i]), state2Values.get(states[i]), gam);
+            double remain = packGain(currPack, convertPack(selected), new KuhnMunkres(workload.length));
+//            System.out.printf("%.2f\n", (totalDataSize - remain) / 1024);
+            toMove += (totalDataSize - remain);
+//            System.out.println(IntStream.of(selected).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+            srcPack = selected;
+        }
+        return toMove;
+    }
+
+    private int[] selectTargetPack(Range[] srcPack, int[][] allTargetPacks, float[] costVector, float gam) {
+//        int[] selected = null;
+//        double minCost = Double.MAX_VALUE;
+//        for (int i = 0; i < allTargetPacks.length; i++) {
+//            double cost = costVector[i] + (totalDataSize - packGain(srcPack, convertPack(allTargetPacks[i]), km));
+//            if (cost < minCost) {
+//                minCost = cost;
+//                selected = allTargetPacks[i];
+//            }
+//        }
+        return IntStream.range(0, allTargetPacks.length).parallel().mapToObj(i -> new PackCost(gam * costVector[i]
+                + (totalDataSize - packGain(srcPack, convertPack(allTargetPacks[i]), new KuhnMunkres(dataSizes.length))), allTargetPacks[i]))
+                .min(Comparator.<PackCost>naturalOrder()).get().pack;
+    }
+
+    private static class PackCost implements Comparable<PackCost> {
+        double cost;
+        int[] pack;
+
+        PackCost(double cost, int[] pack) {
+            this.cost = cost;
+            this.pack = pack;
+        }
+
+        @Override
+        public int compareTo(PackCost o) {
+            return Double.compare(cost, o.cost);
+        }
+    }
+
+    private float[] readValues(Path file) {
+        double[] tmp;
+        try (Stream<String> lines = Files.lines(file)) {
+            tmp = lines.mapToDouble(Double::parseDouble).toArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        float[] values = new float[tmp.length];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = (float) tmp[i];
+        }
+        return values;
+    }
+
+    private int[][] readPacks(Path file) {
+        try (Stream<String> lines = Files.lines(file)) {
+            return lines.map(s -> s.split(":")[1]).map(s -> s.split(",")).map(strArr -> Stream.of(strArr)
+                    .mapToInt(Integer::parseInt).toArray()).toArray(int[][]::new);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private double calcLocalOptimization(int[] states, KuhnMunkres km) {
         PackCalculator calculator = new DPBasedCalculator().setWorkloads(workload).setDataSizes(dataSizes)
                 .setUpperLimitRatio(ratio);
         double toMove = 0.0;
-        int[] srcPack = packAvg(dataSizes.length, states[0]);
+        int[] srcPack = PackingAlg.calc(workload, states[0]);
         for (int i = 1; i < states.length; i++) {
             calculator.setSrcPack(srcPack).setTargetPackSize(states[i]).calc();
             int[] newPack = calculator.getPack();
             double remain = packGain(convertPack(srcPack), convertPack(newPack), km);
             toMove += (totalDataSize - remain);
 //            System.out.printf("%.2f\n", (totalDataSize - remain) / 1024);
+            srcPack = newPack;
+            System.out.println(IntStream.of(newPack).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+        }
+        return toMove;
+    }
+
+    private double calcDefault(int[] states, KuhnMunkres km) {
+        int[] srcPack = PackingAlg.calc(workload, states[0]);
+        double toMove = 0.0;
+        for (int i = 1; i < states.length; i++) {
+            int[] newPack = PackingAlg.calc(workload, states[i]);
+            double remain = packGain(convertPack(srcPack), convertPack(newPack), km);
+            toMove += (totalDataSize - remain);
             srcPack = newPack;
         }
         return toMove;

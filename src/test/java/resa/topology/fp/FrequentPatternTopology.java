@@ -5,7 +5,7 @@ import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
 import resa.metrics.RedisMetricsCollector;
-import resa.topology.WritableTopologyBuilder;
+import resa.topology.ResaTopologyBuilder;
 import resa.util.ConfigUtil;
 import resa.util.ResaConfig;
 
@@ -26,7 +26,8 @@ public class FrequentPatternTopology implements Constant {
         ResaConfig resaConfig = ResaConfig.create();
         resaConfig.putAll(conf);
 
-        TopologyBuilder builder = new WritableTopologyBuilder();
+//        TopologyBuilder builder = new WritableTopologyBuilder();
+        TopologyBuilder builder = new ResaTopologyBuilder();
 
         int numWorkers = ConfigUtil.getInt(conf, "fp-worker.count", 1);
         resaConfig.setNumWorkers(numWorkers);
@@ -41,7 +42,7 @@ public class FrequentPatternTopology implements Constant {
                 .shuffleGrouping("input")
                 .setNumTasks(ConfigUtil.getInt(conf, "fp.generator.tasks", 1));
         builder.setBolt("detector", new Detector(), ConfigUtil.getInt(conf, "fp.detector.parallelism", 1))
-        //doneTODO:
+                //doneTODO:
                 //.fieldsGrouping("generator", new Fields(PATTERN_FIELD))
                 //.fieldsGrouping("detector", FEEDBACK_STREAM, new Fields(PATTERN_FIELD))
                 .directGrouping("generator")

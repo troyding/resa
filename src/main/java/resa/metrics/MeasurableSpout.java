@@ -3,6 +3,7 @@ package resa.metrics;
 import backtype.storm.Config;
 import backtype.storm.hooks.BaseTaskHook;
 import backtype.storm.hooks.info.SpoutAckInfo;
+import backtype.storm.hooks.info.SpoutFailInfo;
 import backtype.storm.metric.api.MultiCountMetric;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
@@ -15,6 +16,7 @@ import resa.util.Sampler;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * A measurable spout implementation based on system hook
@@ -46,10 +48,22 @@ public class MeasurableSpout extends DelegatedSpout {
             MeasurableMsgId streamMsgId = (MeasurableMsgId) info.messageId;
             if (streamMsgId != null && streamMsgId.isSampled()) {
                 long cost = System.currentTimeMillis() - streamMsgId.startTime;
+                completeMetric.addMetric(streamMsgId.stream, cost);
                 if (cost > qos) {
                     missMetric.addMetric(streamMsgId.stream, cost);
-                } else {
-                    completeMetric.addMetric(streamMsgId.stream, cost);
+                }
+                if (completeStatMetric != null) {
+                    completeStatMetric.add(streamMsgId.stream, cost);
+                }
+            }
+        }
+
+        @Override
+        public void spoutFail(SpoutFailInfo info) {
+            MeasurableMsgId streamMsgId = (MeasurableMsgId) info.messageId;
+            if (streamMsgId != null && streamMsgId.isSampled()) {
+                if (completeStatMetric != null) {
+                    completeStatMetric.fail(streamMsgId.stream);
                 }
             }
         }
@@ -59,6 +73,7 @@ public class MeasurableSpout extends DelegatedSpout {
     private Sampler sampler;
     private transient MultiCountMetric emitMetric;
     private transient CMVMetric missMetric;
+    private transient CompleteStatMetric completeStatMetric;
     private long lastMetricsSent;
     private long qos;
 
@@ -77,11 +92,19 @@ public class MeasurableSpout extends DelegatedSpout {
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         int interval = Utils.getInt(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
         completeMetric = context.registerMetric(MetricNames.COMPLETE_LATENCY, new CMVMetric(), interval);
+        // register miss metric
+        qos = ConfigUtil.getLong(conf, "resa.metric.complete-latency.threshold.ms", Long.MAX_VALUE);
         missMetric = context.registerMetric(MetricNames.MISS_QOS, new CMVMetric(), interval);
         emitMetric = context.registerMetric(MetricNames.EMIT_COUNT, new MultiCountMetric(), interval);
-        qos = ConfigUtil.getLong(conf, "resa.metric.complete-latency.threshold.ms", Long.MAX_VALUE);
+        // register stat metric
+        double[] xAxis = Stream.of(((String) conf.getOrDefault("resa.metric.complete-latency.stat.x-axis", ""))
+                .split(",")).filter(s -> !s.isEmpty()).mapToDouble(Double::parseDouble).toArray();
+        completeStatMetric = xAxis.length > 0 ? context.registerMetric(MetricNames.LATENCY_STAT,
+                new CompleteStatMetric(xAxis), interval) : null;
+        // register duration metric
         lastMetricsSent = System.currentTimeMillis();
         context.registerMetric(MetricNames.DURATION, this::getMetricsDuration, interval);
+
         sampler = new Sampler(ConfigUtil.getDouble(conf, ResaConfig.COMP_SAMPLE_RATE, 0.05));
         context.addTaskHook(new SpoutHook());
         super.open(conf, context, new SpoutOutputCollector(collector) {

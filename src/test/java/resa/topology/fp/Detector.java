@@ -99,7 +99,7 @@ public class Detector extends BaseRichBolt implements Constant {
 
     }
 
-    private Map<WordList, Entry> patterns;
+    private PatternDB patterns;
     private int threshold;
     private OutputCollector collector;
     private List<Integer> targetTasks;
@@ -109,15 +109,28 @@ public class Detector extends BaseRichBolt implements Constant {
         private long maxKeep;
 
         public PatternDB(long maxKeep) {
+            super(65536, 0.75f, true);
             this.maxKeep = maxKeep;
         }
 
         public PatternDB() {
+            this(Long.MAX_VALUE);
         }
 
         @Override
         protected boolean removeEldestEntry(Map.Entry eldest) {
             return System.currentTimeMillis() - ((Entry) eldest.getValue()).timestamp > maxKeep;
+        }
+
+        public void removeExpired(long now) {
+            for (Iterator<Map.Entry<WordList, Entry>> iter = entrySet().iterator(); iter.hasNext(); ) {
+                Map.Entry<WordList, Entry> e = iter.next();
+                if (now - e.getValue().timestamp > maxKeep) {
+                    iter.remove();
+                } else {
+                    return;
+                }
+            }
         }
 
         @Override
@@ -154,7 +167,7 @@ public class Detector extends BaseRichBolt implements Constant {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         String patternData = "pattern";
-        this.patterns = (Map<WordList, Entry>) context.getTaskData(patternData);
+        this.patterns = (PatternDB) context.getTaskData(patternData);
         if (this.patterns == null) {
             long maxKeepInterval = ConfigUtil.getInt(stormConf, MAX_KEEP_PROP, 60000);
             context.setTaskData(patternData, (this.patterns = new PatternDB(maxKeepInterval)));
@@ -284,7 +297,18 @@ public class Detector extends BaseRichBolt implements Constant {
                 entry.setTimestamp(now);
             }
         });
+        patterns.removeExpired(now);
+        sleep(wordListArrayList.size());
         collector.ack(input);
+    }
+
+    private static void sleep(long t) {
+        long t1 = System.currentTimeMillis();
+        do {
+            for (int i = 0; i < 10; i++) {
+                Math.atan(Math.sqrt(Math.random() * Integer.MAX_VALUE));
+            }
+        } while (System.currentTimeMillis() - t1 < t);
     }
 
     private void incRefToSubPatternExcludeSelf(int[] wordIds, OutputCollector collector, Tuple input) {
