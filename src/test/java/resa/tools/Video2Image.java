@@ -17,7 +17,7 @@ public class Video2Image {
         opencv_core.Mat mat = new opencv_core.Mat();
         int i = 0;
         opencv_core.IplImage img = null;
-        int max = Integer.parseInt(args[3]);
+        int max = Integer.parseInt(args[2]);
         if (max <= 0) {
             max = Integer.MAX_VALUE;
         }
