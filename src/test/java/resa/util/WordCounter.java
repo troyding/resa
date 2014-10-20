@@ -11,10 +11,11 @@ import java.util.StringTokenizer;
 public class WordCounter {
 
     public static void main(String[] args) throws IOException {
-        Files.lines(Paths.get(args[0])).mapToInt(line -> {
+        Files.lines(Paths.get(args[0])).limit(Long.parseLong(args[1])).mapToInt(line -> {
             StringTokenizer tokenizer = new StringTokenizer(line.replaceAll("\\p{P}|\\p{S}", " "));
             int count = 0;
             while (tokenizer.hasMoreTokens()) {
+                tokenizer.nextToken();
                 count++;
             }
             return count;
