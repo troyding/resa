@@ -99,8 +99,8 @@ public class MeasurableBolt extends DelegatedBolt {
         if (elapse > 0) {
             String id = tuple.getSourceComponent() + ":" + tuple.getSourceStreamId();
             executeMetric.addMetric(id, elapse / 1000000.0);
-            System.out.println("from " + tuple.getSourceComponent() + ":" + tuple.getSourceStreamId() +
-                    " cost->" + (elapse / 1000000.0));
+//            System.out.println("from " + tuple.getSourceComponent() + ":" + tuple.getSourceStreamId() +
+//                    " cost->" + (elapse / 1000000.0));
         }
     }
 
