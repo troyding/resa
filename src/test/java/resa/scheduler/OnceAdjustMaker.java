@@ -31,9 +31,13 @@ public class OnceAdjustMaker implements DecisionMaker {
 //            ret.put("generator", 6);
 //            ret.put("detector", 13);
 //            ret.put("reporter", 3);
+//            ret.put("image-input", 2);
+//            ret.put("feat-ext", 10);
+//            ret.put("matcher", 11);
+//            ret.put("aggregater", 1);
             ret.put("image-input", 2);
-            ret.put("feat-ext", 10);
-            ret.put("matcher", 11);
+            ret.put("feat-ext", 8);
+            ret.put("matcher", 8);
             ret.put("aggregater", 1);
             return ret;
         }
